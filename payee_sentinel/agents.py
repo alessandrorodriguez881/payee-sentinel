@@ -137,14 +137,26 @@ class Memory:
         self.store.memory_add(self.signals_dp, self.conversation(sig.agent), sig.agent,
                               sig.text(self.vendors[sig.vendor_id]), sig.metadata())
 
+    def resolve(self, vendor_id: str, at: datetime, verdict: str) -> None:
+        """A person reviewed the vendor (attack confirmed or activity found legitimate). Signals up to now are
+        closed: they stay in memory for the audit, but no longer count towards new decisions."""
+        v = self.vendors[vendor_id]
+        self.store.memory_add(self.signals_dp, self.conversation("analyst"), "analyst",
+                              f"Risk signals for vendor {vendor_id} {v.name} reviewed by the analyst at "
+                              f"{at:%Y-%m-%d %H:%M}: {verdict} Earlier signals are closed.",
+                              dict(kind="resolution", vendor_id=vendor_id, at=at.isoformat(), verdict=verdict))
+
     def signals(self, agent: str, vendor_id: str, now: datetime) -> list[Signal]:
         v = self.vendors[vendor_id]
         hits = self.store.memory_search(self.signals_dp, self.conversation(agent), agent,
                                         f"risk signals for vendor {vendor_id} {v.name}", limit=30)
+        closed = max((datetime.fromisoformat(h.metadata["at"]) for h in hits
+                      if h.metadata.get("kind") == "resolution" and h.metadata.get("vendor_id") == vendor_id
+                      and datetime.fromisoformat(h.metadata["at"]) <= now), default=datetime.min)
         out = []
         for h in hits:
             s = Signal.from_hit(h)
-            if s is None or s.vendor_id != vendor_id or not (now - LOOKBACK <= s.at <= now):
+            if s is None or s.vendor_id != vendor_id or not (max(now - LOOKBACK, closed) < s.at <= now):
                 continue
             if self.mode == "siloed" and s.agent != agent:
                 continue
@@ -339,12 +351,12 @@ class VendorMasterAgent(Agent):
         req = self.pending.pop(e.vendor_id, None)   # a callback
         if req is None or req.id in self.rejected:
             return
-        if e.data["result"] != "confirmed":
+        if e.data["result"] == "denied":
             self.emit(e, "bank.callback_denied", "The vendor denied asking for the change when called back.")
             self.actions.append(Action(e.ts, self.name, "reject_bank_change", v.id, WEIGHTS["bank.callback_denied"],
                                        ["bank.callback_denied"], req.id))
             return
-        if e.data["phone_source"] != "master":
+        if e.data["phone_source"] not in ("master", "none"):   # "none": the clerk skipped the callback
             self.emit(e, "bank.callback_to_unverified_number",
                       f"The callback went to {e.data['phone']}, a number taken from the request itself.")
         changed = [s for s in self.mem.signals(self.name, v.id, e.ts)

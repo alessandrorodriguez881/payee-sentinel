@@ -246,7 +246,8 @@ def _background(b: _Builder, vendors: dict[str, Vendor]) -> None:
 
 # ---------- attacks ----------
 
-ATTACK_KINDS = ["lookalike_bec", "mailbox_takeover", "portal_takeover", "phone_social", "slow_burn"]
+ATTACK_KINDS = ["lookalike_bec", "mailbox_takeover", "portal_takeover", "phone_social", "slow_burn",
+                "careful_mailbox"]
 
 
 def _bank_change_email(rng, v: Vendor, sender: str, reply_to: str | None, new_iban: str, holder: str,
@@ -264,10 +265,10 @@ def _bank_change_email(rng, v: Vendor, sender: str, reply_to: str | None, new_ib
 def _attack(b: _Builder, v: Vendor, kind: str, case: Case, day0: datetime, next_run: datetime) -> None:
     """One attack. The bank-change request lands 1-5 days before `next_run` (the payment run the attacker aims at)."""
     rng = b.rng
-    mule_country = rng.choice(MULE_IBAN_COUNTRIES) if rng.random() < 0.6 else v.country
-    case.new_iban = make_iban(rng, mule_country if mule_country in COUNTRIES or mule_country in EXTRA_BBAN
-                              else v.country)
-    holder = v.name if rng.random() < 0.6 else v.name.split()[0] + " Trading Ltd"
+    careful = kind == "careful_mailbox"   # a patient attacker in the real mailbox: no tell-tale signs at all
+    mule_country = rng.choice(MULE_IBAN_COUNTRIES) if rng.random() < 0.6 and not careful else v.country
+    case.new_iban = make_iban(rng, mule_country)
+    holder = v.name if rng.random() < 0.6 or careful else v.name.split()[0] + " Trading Ltd"
     attacker_phone = _phone(rng, COUNTRIES[v.country][1])
     case.controlled_phone = attacker_phone
     request_at = next_run - timedelta(days=rng.randint(1, 5), hours=rng.randint(0, 6))
@@ -314,36 +315,38 @@ def _attack(b: _Builder, v: Vendor, kind: str, case: Case, day0: datetime, next_
         b.add(request_at + timedelta(minutes=2), "vendor_master", "bank_change_request", v, case, via="email",
               new_iban=case.new_iban, holder=holder)
         source = "master"   # the clerk calls the master phone, which the attacker already changed
-    else:  # lookalike_bec, mailbox_takeover
+    else:  # lookalike_bec, mailbox_takeover, careful_mailbox
         if kind == "lookalike_bec":
             sender, reply_to = f"accounts@{_lookalike(rng, v.domain)}", None
         else:
             sender = v.email
-            reply_to = f"accounts@{_lookalike(rng, v.domain)}" if rng.random() < 0.5 else None
-            if rng.random() < 0.7:  # reconnaissance from the stolen mailbox
+            reply_to = f"accounts@{_lookalike(rng, v.domain)}" if rng.random() < 0.5 and not careful else None
+            if rng.random() < 0.7 and not careful:  # reconnaissance from the stolen mailbox
                 b.add(request_at - timedelta(days=rng.randint(1, 4)), "inbox", "email", v, case, sender=sender,
                       reply_to=reply_to, subject="Open items",
                       body="Hello, for our month-end reconciliation could you send us the list of all open "
                            f"invoices and the next payment date? Thank you, {v.name}")
-        put_phone = rng.random() < 0.6
+        put_phone = rng.random() < (0.5 if careful else 0.6)
         b.add(request_at, "inbox", "email", v, case, **_bank_change_email(
-            rng, v, sender, reply_to, case.new_iban, holder, rng.random() < 0.7,
+            rng, v, sender, reply_to, case.new_iban, holder, rng.random() < 0.7 and not careful,
             attacker_phone if put_phone else None))
         b.add(request_at + timedelta(minutes=2), "vendor_master", "bank_change_request", v, case, via="email",
               new_iban=case.new_iban, holder=holder)
         source = "email" if put_phone and rng.random() < 0.6 else "master"
-    # the AP clerk's callback (the control most companies already have)
+    # the AP clerk's callback (the control most companies already have); sometimes it is skipped
+    if kind in ("lookalike_bec", "mailbox_takeover", "careful_mailbox", "phone_social") and rng.random() < 0.2:
+        source = "none"
     phone = {"email": attacker_phone, "portal": attacker_phone}.get(source)
     if source == "master":
         changed = [e for e in b.events if e.attack_id == case.id and (
             (e.kind == "contact_change" and e.data.get("field") == "phone")
             or (e.kind == "call" and e.data.get("request") == "update_phone"))]
         phone = attacker_phone if changed else v.phone
-    result = "confirmed" if phone == attacker_phone else "denied"
+    result = "skipped" if source == "none" else "confirmed" if phone == attacker_phone else "denied"
     b.add(request_at + timedelta(hours=rng.randint(2, 20)), "vendor_master", "callback", v, case,
           phone=phone, phone_source=source, result=result)
     # make sure money is due at the run the attacker aims at: a fake "updated invoice" or the real one
-    if rng.random() < 0.5 and kind in ("lookalike_bec", "mailbox_takeover"):
+    if rng.random() < 0.5 and kind in ("lookalike_bec", "mailbox_takeover", "careful_mailbox"):
         sender = [e for e in b.events if e.attack_id == case.id and e.kind == "email"][-1].data["sender"]
         b.add(request_at + timedelta(hours=1), "invoices", "invoice", v, case,
               invoice_no=f"{v.id}-2026-U{rng.randint(10, 99)}", amount=round(v.mean_amount * rng.uniform(1.5, 4), 2),
@@ -357,7 +360,21 @@ def _attack(b: _Builder, v: Vendor, kind: str, case: Case, day0: datetime, next_
 # ---------- benign look-alikes ----------
 
 BENIGN_KINDS = ["legit_bank_change", "legit_bank_change_foreign", "travel_login", "new_clerk", "urgent_legit",
-                "merger"]
+                "merger", "new_clerk_then_bank_change", "office_move", "legit_new_direct_line",
+                "legit_skipped_callback"]
+
+
+def _legit_bank_change(b: _Builder, v: Vendor, case: Case, t: datetime, country: str, holder: str,
+                       phone: str, source: str = "master", phone_in_body: str | None = None,
+                       result: str = "confirmed") -> None:
+    rng = b.rng
+    case.new_iban = make_iban(rng, country)
+    b.add(t, "inbox", "email", v, case, True, **_bank_change_email(
+        rng, v, v.email, None, case.new_iban, holder, rng.random() < 0.3, phone_in_body))
+    b.add(t + timedelta(minutes=2), "vendor_master", "bank_change_request", v, case, True, via="email",
+          new_iban=case.new_iban, holder=holder)
+    b.add(t + timedelta(hours=rng.randint(2, 20)), "vendor_master", "callback", v, case, True,
+          phone=None if result == "skipped" else phone, phone_source=source, result=result)
 
 
 def _benign(b: _Builder, v: Vendor, kind: str, case: Case, day: datetime) -> None:
@@ -366,30 +383,38 @@ def _benign(b: _Builder, v: Vendor, kind: str, case: Case, day: datetime) -> Non
     if kind in ("legit_bank_change", "legit_bank_change_foreign", "merger"):
         country = v.country if kind != "legit_bank_change_foreign" else rng.choice(
             [c for c in COUNTRIES if c != v.country])
-        case.new_iban = make_iban(rng, country)
         holder = v.name if kind != "merger" else f"{v.name.split()[0]} Holding {COUNTRIES[v.country][3]}"
-        b.add(t, "inbox", "email", v, case, True, **_bank_change_email(
-            rng, v, v.email, None, case.new_iban, holder, rng.random() < 0.3, None))
-        b.add(t + timedelta(minutes=2), "vendor_master", "bank_change_request", v, case, True, via="email",
-              new_iban=case.new_iban, holder=holder)
-        b.add(t + timedelta(hours=rng.randint(2, 20)), "vendor_master", "callback", v, case, True,
-              phone=v.phone, phone_source="master", result="confirmed")
+        _legit_bank_change(b, v, case, t, country, holder, v.phone)
+    elif kind == "legit_new_direct_line":   # the clerk calls the new number given in the (real) email
+        direct = _phone(rng, COUNTRIES[v.country][1])
+        _legit_bank_change(b, v, case, t, v.country, v.name, direct, "email", direct)
+    elif kind == "legit_skipped_callback":
+        _legit_bank_change(b, v, case, t, v.country, v.name, v.phone, "none", result="skipped")
     elif kind == "travel_login":
         b.add(t, "portal", "login", v, case, True, device=_device(rng), country=rng.choice(
             ["US", "CN", "AE", "IN", "MX"]), success=True)
-    elif kind == "new_clerk":  # new AP clerk: new laptop, password reset, contact email updated
+    elif kind in ("new_clerk", "new_clerk_then_bank_change"):  # new laptop, password reset, contact email updated
         dev = _device(rng)
         b.add(t, "portal", "password_reset", v, case, True, device=dev, country=v.country)
         b.add(t + timedelta(minutes=5), "portal", "login", v, case, True, device=dev, country=v.country, success=True)
         b.add(t + timedelta(minutes=rng.randint(10, 120)), "portal", "contact_change", v, case, True, device=dev,
               country=v.country, field="email", old=v.email, new=f"ap.team@{v.domain}")
+        if kind == "new_clerk_then_bank_change":
+            _legit_bank_change(b, v, case, _work_time(rng, day + timedelta(days=rng.randint(2, 10))), v.country,
+                               v.name, v.phone)
+    elif kind == "office_move":   # new phone through the support line, then a real bank change
+        new_phone = _phone(rng, COUNTRIES[v.country][1])
+        b.add(t, "support", "call", v, case, True, caller=new_phone, request="update_phone", new=new_phone,
+              verified_by="invoice_no")
+        _legit_bank_change(b, v, case, _work_time(rng, day + timedelta(days=rng.randint(2, 6))), v.country,
+                           v.name, new_phone)
     elif kind == "urgent_legit":
         b.add(t, "inbox", "email", v, case, True, sender=v.email, reply_to=None, subject="Overdue payment",
               body=f"Hello, invoice {v.id}-2026001 is overdue. Please pay it {rng.choice(URGENCY)}. "
                    f"Regards, {v.name}")
 
 
-def generate(seed: int = 7, n_vendors: int = 60, n_attacks: int = 8, n_benign: int = 14) -> World:
+def generate(seed: int = 7, n_vendors: int = 60, n_attacks: int = 8, n_benign: int = 20) -> World:
     rng = random.Random(seed)
     vendors = _make_vendors(rng, n_vendors)
     b = _Builder(rng)
