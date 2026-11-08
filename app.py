@@ -5,6 +5,7 @@ memory through Meko. Run it from this folder (so the theme in .streamlit/ loads)
 """
 from __future__ import annotations
 
+from datetime import datetime
 import os
 
 import streamlit as st
@@ -175,9 +176,10 @@ with meko_tab:
     counts[3].metric("Promotions by a person", sum(c.tool == "promote_memories" for c in calls), border=True)
     st.caption("Every call the Meko lane made, newest first. On real Meko each decision also appears in the portal "
                "as a decision trace.")
-    st.dataframe([dict(time=c.at[11:19], agent=AGENT_NAMES.get(c.agent_id, c.agent_id), call=c.tool,
+    st.dataframe([dict(time=datetime.fromisoformat(c.at).astimezone().strftime("%H:%M:%S"),
+                       agent=AGENT_NAMES.get(c.agent_id, c.agent_id), call=c.tool,
                        datapack=dp_name.get(c.datapack, c.datapack[:8]), what=c.summary,
-                       found=c.found or None, ms=c.latency_ms) for c in reversed(calls)],
+                       results=c.found or None, ms=c.latency_ms) for c in reversed(calls)],
                  hide_index=True, alt="Calls the Meko lane made to Meko")
 
 # ---------- measured results ----------

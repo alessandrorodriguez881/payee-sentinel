@@ -420,9 +420,12 @@ class Story:
             for s in sigs:
                 per_agent.setdefault(AGENT_NAMES[s.agent], []).append(s)
             lines = [f"No agent stopped anything for {v.name}. Each one saw only its own part:"]
+            limits = {AGENT_NAMES["vendor_master"]: f"its limit to block a bank change is {BLOCK_BANK_CHANGE_AT}",
+                      AGENT_NAMES["payments"]: f"its limit to hold a payment is {HOLD_AT}"}
             for name, ss in per_agent.items():
                 risk, _ = risk_of(ss)
-                lines.append(f"{name}: {len(ss)} signals, risk {risk} — below its own threshold")
+                lines.append(f"{name}: {len(ss)} signals, risk {risk} — "
+                             + (limits.get(name) or "it decides nothing itself, and no other agent could read them"))
             return lines
         lines = [f"**{AGENT_NAMES[d['agent']]}, {d['at']:%A %H:%M}: {d['what']}.** Risk {d['risk']}; "
                  f"rule: {d['rule']}.", "What it found in Meko, written by other agents before it acted:"]
