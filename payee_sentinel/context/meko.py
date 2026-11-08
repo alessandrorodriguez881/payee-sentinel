@@ -69,12 +69,13 @@ def _hits(obj: Any, source: str) -> list[Hit]:
 
 
 class MekoClient:
-    def __init__(self, api_key: str | None = None, timeout: float = 60.0) -> None:
+    def __init__(self, api_key: str | None = None, timeout: float = 60.0,
+                 transport: httpx.BaseTransport | None = None) -> None:
         self.api_key = api_key or os.environ.get("MEKO_API_KEY", "")
         if not self.api_key.startswith("mko_tkn_"):
             raise MekoError("MEKO_API_KEY missing or not a Meko key (it starts with mko_tkn_)")
         self.calls: list[Call] = []
-        self._http = httpx.Client(timeout=timeout)
+        self._http = httpx.Client(timeout=timeout, transport=transport)
         self._session: str | None = None
         self._ids = itertools.count(1)
         self._ready = False
