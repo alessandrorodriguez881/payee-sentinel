@@ -127,15 +127,18 @@ class Action:
 class Memory:
     """What the agents share through Meko, seen through the mode of the run."""
 
-    def __init__(self, store: ContextStore, mode: str, vendors: dict[str, Vendor]):
+    def __init__(self, store: ContextStore, mode: str, vendors: dict[str, Vendor], run_id: str | None = None):
         assert mode in MODES
         self.store, self.mode, self.vendors = store, mode, vendors
+        self.run_id = run_id    # on real Meko, keeps one demo run from reading the signals of earlier runs
         self.signals_dp = store.ensure_datapack("sentinel-signals", "Raw risk signals from every channel agent")
         self.patterns_dp = store.ensure_datapack("sentinel-patterns", "Confirmed attack patterns and playbooks")
         self.legit_dp = store.ensure_datapack("sentinel-legit", "Legitimate look-alikes confirmed by the analyst")
         self.audit_dp = store.ensure_datapack("sentinel-audit", "Audit reports and case files")
         self._conv: dict[str, str] = {}
         self.freezes: list[Action] = []   # vendors whose bank details a pattern match froze
+        self.written: list[Signal] = []   # what this run wrote and read, for the demo screen
+        self.reads: list[tuple[str, str, list[Signal]]] = []
 
     def frozen(self, vendor_id: str) -> bool:
         return any(a.vendor_id == vendor_id for a in self.freezes)
@@ -145,9 +148,16 @@ class Memory:
             self._conv[agent] = self.store.conversation_create(self.signals_dp, agent, f"{agent} agent session")
         return self._conv[agent]
 
+    def _tag(self, meta: dict) -> dict:
+        return dict(meta, run=self.run_id) if self.run_id else meta
+
+    def _ours(self, hit: Hit) -> bool:
+        return self.run_id is None or hit.metadata.get("run") == self.run_id
+
     def write(self, sig: Signal) -> None:
         self.store.memory_add(self.signals_dp, self.conversation(sig.agent), sig.agent,
-                              sig.text(self.vendors[sig.vendor_id]), sig.metadata())
+                              sig.text(self.vendors[sig.vendor_id]), self._tag(sig.metadata()))
+        self.written.append(sig)
 
     def resolve(self, vendor_id: str, at: datetime, verdict: str) -> None:
         """A person reviewed the vendor (attack confirmed or activity found legitimate). Signals up to now are
@@ -156,12 +166,14 @@ class Memory:
         self.store.memory_add(self.signals_dp, self.conversation("analyst"), "analyst",
                               f"Risk signals for vendor {vendor_id} {v.name} reviewed by the analyst at "
                               f"{at:%Y-%m-%d %H:%M}: {verdict} Earlier signals are closed.",
-                              dict(kind="resolution", vendor_id=vendor_id, at=at.isoformat(), verdict=verdict))
+                              self._tag(dict(kind="resolution", vendor_id=vendor_id, at=at.isoformat(),
+                                             verdict=verdict)))
 
     def signals(self, agent: str, vendor_id: str, now: datetime) -> list[Signal]:
         v = self.vendors[vendor_id]
-        hits = self.store.memory_search(self.signals_dp, self.conversation(agent), agent,
-                                        f"risk signals for vendor {vendor_id} {v.name}", limit=30)
+        hits = [h for h in self.store.memory_search(self.signals_dp, self.conversation(agent), agent,
+                                                    f"risk signals for vendor {vendor_id} {v.name}", limit=30)
+                if self._ours(h)]
         closed = max((datetime.fromisoformat(h.metadata["at"]) for h in hits
                       if h.metadata.get("kind") == "resolution" and h.metadata.get("vendor_id") == vendor_id
                       and datetime.fromisoformat(h.metadata["at"]) <= now), default=datetime.min)
@@ -173,6 +185,7 @@ class Memory:
             if self.mode == "siloed" and s.agent != agent:
                 continue
             out.append(s)
+        self.reads.append((agent, vendor_id, out))
         return out
 
     def _promoted_patterns(self, datapack_id: str, agent: str, kind: str) -> list[Hit]:

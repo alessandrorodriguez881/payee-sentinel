@@ -30,6 +30,7 @@ class Call:
     summary: str
     latency_ms: float
     tokens_sent: int = 0            # rough size of what came back into the agent's context (chars / 4)
+    found: int = 0                  # how many results a search returned
 
 
 class ContextStore(Protocol):

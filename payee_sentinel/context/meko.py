@@ -144,13 +144,14 @@ class MekoClient:
         if (result or {}).get("isError"):
             raise MekoError(f"{name}: " + ("\n".join(texts) or "failed"))
         out = _unwrap(texts[0]) if texts else result
-        returned = 0
+        returned, found = 0, 0
         if name.endswith("search"):
             body = out.get("results", out) if isinstance(out, dict) else out
             buckets = body.values() if isinstance(body, dict) else [body]
-            returned = approx_tokens(" ".join(h.text for b in buckets for h in _hits(b, "")))
+            hits = [h for b in buckets for h in _hits(b.get("hits", []) if isinstance(b, dict) else b, "")]
+            returned, found = approx_tokens(" ".join(h.text for h in hits)), len(hits)
         self.calls.append(Call(now_iso(), agent_id, name, args.get("datapack_id", ""), args.get("conversation_id"),
-                               summary or name, round((time.perf_counter() - t0) * 1000, 1), returned))
+                               summary or name, round((time.perf_counter() - t0) * 1000, 1), returned, found))
         return out
 
     def _rest(self, method: str, path: str, **kw) -> Any:

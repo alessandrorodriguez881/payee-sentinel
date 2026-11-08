@@ -54,7 +54,8 @@ class LocalMeko:
     def _log(self, agent_id, tool, datapack, conversation_id, summary, t0, returned=None) -> None:
         self.calls.append(Call(now_iso(), agent_id, tool, datapack, conversation_id, summary,
                                round((time.perf_counter() - t0) * 1000, 2),
-                               approx_tokens(returned) if returned is not None else 0))
+                               approx_tokens(returned) if returned is not None else 0,
+                               len(returned) if isinstance(returned, list) else 0))
 
     def _check(self, datapack_id: str) -> None:
         if datapack_id not in self.datapacks.values():
