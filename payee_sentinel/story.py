@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from pathlib import Path
 import random
 import uuid
 
@@ -23,6 +24,7 @@ from .context.local import LocalMeko
 from .scenario import Event, Vendor, make_iban
 
 LANES = {"siloed": "Agents in silos (today)", "learning2": "Agents sharing memory in Meko"}
+KNOWLEDGE = Path(__file__).resolve().parent / "knowledge"
 BUYER = "Hallberg Components GmbH"
 AGENT_NAMES = {"portal": "Portal agent", "inbox": "Inbox agent", "support": "Support agent",
                "vendor_master": "Vendor-master agent", "payments": "Payments agent", "analyst": "Analyst (a person)",
@@ -391,6 +393,9 @@ class Story:
         self.lanes = {"siloed": Lane("siloed", LocalMeko(), f"{self.run_id}-siloed"),
                       "learning2": Lane("learning2", make_store(), f"{self.run_id}-meko")}
         self.done: list[tuple[Chapter, dict[str, Outcome]]] = []
+        meko = self.lanes["learning2"]
+        for doc in sorted(KNOWLEDGE.glob("*.md")):     # the company's policy and playbook, in Meko's knowledge base
+            meko.store.knowledge_upload(meko.mem.patterns_dp, doc.name, doc.read_bytes())
 
     @property
     def next_chapter(self) -> Chapter | None:
@@ -408,6 +413,8 @@ class Story:
                 out[mode] = lane.run_payments(ch)
             else:
                 notes = self.explain(mode, "V001", ch.when) if ch.kind == "audit" else []
+                if notes and mode == "learning2":
+                    notes.append(self._save_report(lane, "V001", notes))
                 out[mode] = Outcome(ch.key, [], "", notes=notes)
         self.done.append((ch, out))
 
@@ -446,7 +453,22 @@ class Story:
         for s in lane.mem.history("auditor", vendor_id, at):
             lines.append(f"{s.at:%a %H:%M} · {AGENT_NAMES[s.agent]} · `{s.type}` (+{s.weight}) — {s.detail}")
         lines.append(f"Reasoning saved with the decision: {d['reasoning']}")
+        policy = lane.store.knowledge_search(lane.mem.patterns_dp, lane.mem.conversation("auditor"), "auditor",
+                                             "bank-change request confirmed by calling the phone number on file "
+                                             "60 days before, blocking a change", limit=1)
+        if policy:
+            text = " ".join(policy[0].text.replace("#", "").split())
+            lines.append(f"Policy behind the rule, found in Meko's knowledge base: \"{text[:320]}\"")
         return lines
+
+    @staticmethod
+    def _save_report(lane: Lane, vendor_id: str, lines: list[str]) -> str:
+        """The auditor keeps the case report as an artifact in `sentinel-audit` (the same bytes give the same hash)."""
+        report = f"# Case report: {VENDORS[vendor_id].name}\n\n" + "\n".join(f"- {ln}" for ln in lines) + "\n"
+        digest = lane.store.artifact_put(lane.mem.audit_dp, lane.mem.conversation("auditor"), "auditor",
+                                         f"case-{vendor_id}-{lane.mem.run_id}.md", report.encode("utf-8"),
+                                         "text/markdown")
+        return f"Case report saved in Meko as an artifact (sha256 {digest[:12]}…)"
 
     def summary(self) -> dict[str, dict]:
         out = {}

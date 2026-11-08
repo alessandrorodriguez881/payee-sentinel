@@ -46,6 +46,13 @@ the confirmed attack pattern to Meko's collective memory, and week 2 shows what 
 Without a `MEKO_API_KEY` everything runs on the offline simulator (`payee_sentinel/context/local.py`). With a key in
 `.env` (see `.env.example`), `python scripts/meko_smoke.py` checks every Meko feature used here against the real service.
 
+## How Meko is used
+Datapacks, per-agent conversations, decisions saved with their reasoning, memory with metadata, hybrid search,
+promotion by a person, collective memory, the knowledge base (the company's payment policy, quoted by the auditor)
+and artifacts (one report per case) are used by the agents; token tracking and `context_search` work against the live
+service but are not used by the agents yet. Feature by feature, with the code that uses each:
+`docs/MEKO_USAGE.md`. What the live service actually returned: `docs/MEKO_SMOKE.md`.
+
 ## Honest notes
 - All data is invented. IBANs have valid check digits around random account numbers.
 - One assumption shapes the siloed results: the vendor master keeps only the *current* contact values. Who changed a
