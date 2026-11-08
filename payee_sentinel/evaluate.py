@@ -32,6 +32,7 @@ from .scenario import START, Event, World, generate
 DISCOVERY_DELAY = timedelta(days=10)
 PAY_HORIZON = timedelta(days=7)          # a run pays what falls due in the next 7 days
 NOT_PATTERN = ("pay.", "pattern.")       # signal types that describe our own reaction, not the attacker
+RETRIEVALS = ("memory_search", "memory_get_all", "context_search", "knowledgebase_search")  # calls that fill context
 
 
 @dataclass
@@ -127,8 +128,8 @@ def run(world: World, mode: str, store=None) -> RunResult:
         mem.freezes.append(Action(at, "analyst", "freeze_vendor", vendor_id, 0, ["confirmed incident"], case_id))
         if len(types) < 2:
             return
-        text = (f"Confirmed attack pattern on vendor {vendor_id}: the signal types {', '.join(types)} appeared "
-                f"within 30 days before an attempt to redirect payments to a new bank account.")
+        text = (f"Confirmed attack pattern on vendor {vendor_id}: these signals appeared within 30 days before an "
+                f"attempt to redirect payments to a new bank account. Signal types: [{', '.join(types)}]")
         ids = store.memory_add(mem.patterns_dp, mem.conversation("auditor"), "auditor", text,
                                dict(kind="pattern", signal_types=types, learning_candidate=True, case=case_id))
         if mode == "learning":
@@ -191,9 +192,9 @@ def run(world: World, mode: str, store=None) -> RunResult:
                 pending.remove(inv)
                 v = world.vendors[inv.vendor_id]
                 iban = current[v.id]
-                before = len([c for c in store.calls if c.tool == "memory_search"])
+                before = len(store.calls)
                 act = pay.decide(run_at, v, inv, iban, changed_at[v.id], paid_ibans)
-                searches = [c for c in store.calls if c.tool == "memory_search"][before:]
+                searches = [c for c in store.calls[before:] if c.tool in RETRIEVALS]
                 out.retrieval_tokens.append(sum(c.tokens_sent for c in searches))
                 history = [asdict(x) for x in world.events_of(v.id) if run_at - LOOKBACK <= x.ts <= run_at]
                 out.stuffing_tokens.append(approx_tokens(json.dumps(history, default=str)))

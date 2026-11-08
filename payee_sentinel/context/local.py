@@ -3,7 +3,8 @@
 It keeps Meko's rules that the agents depend on:
 - memory belongs to the account and is searchable by all of its agents in the same datapack (`agent_id` is only for
   attribution); nothing crosses datapacks;
-- promoting a memory is one-way: it leaves the private store and becomes collective memory every member can find;
+- promoting a memory is one-way: it leaves the private store (and `memory_search`), joins the shared knowledge side,
+  and is listed by `collective()` without its metadata, as real Meko does (checked on 2026-11-08);
 - `context_search` answers in separate buckets (memory, knowledge base, conversations);
 - artifacts are content-addressed (same bytes, same hash); the Free plan allows 10 datapacks.
 
@@ -100,10 +101,12 @@ class LocalMeko:
         self._log(agent_id, "memory_add", datapack_id, conversation_id, text[:120], t0)
         return [mid]
 
-    def _memory_hits(self, datapack_id: str, query: str) -> list[Hit]:
+    def _memory_hits(self, datapack_id: str, query: str, promoted: bool = False) -> list[Hit]:
+        """Private memories (as real Meko: promoted ones leave `memory_search`); `promoted=True` for the knowledge
+        side, where they live after promotion."""
         hits = []
         for m in self.memories.values():
-            if m["datapack"] != datapack_id:
+            if m["datapack"] != datapack_id or (m["state"] == "promoted") != promoted:
                 continue
             s = _score(query, m["text"])
             if s > 0:
@@ -137,6 +140,16 @@ class LocalMeko:
         out = {"memory": mem, "knowledge_base": kb, "conversation": conv}
         self._log(agent_id, "context_search", datapack_id, conversation_id, query, t0,
                   [h.text for b in out.values() for h in b])
+        return out
+
+    def collective(self, datapack_id, conversation_id, agent_id) -> list[Hit]:
+        """Promoted memories, newest first, at most 20 (like Meko's `memory_get_all(promoted=True)`). As in Meko,
+        they come back without their metadata."""
+        t0 = time.perf_counter()
+        out = [Hit(m["id"], m["text"], 1.0, {}, "collective") for m in reversed(list(self.memories.values()))
+               if m["datapack"] == datapack_id and m["state"] == "promoted"][:20]
+        self._log(agent_id, "memory_get_all", datapack_id, conversation_id, "collective memory", t0,
+                  [h.text for h in out])
         return out
 
     # ---------- learnings and promotion (Datapack API) ----------
@@ -176,7 +189,7 @@ class LocalMeko:
     def _kb_hits(self, datapack_id: str, query: str) -> list[Hit]:
         hits = [Hit(f"{c['doc']}#{c['n']}", c["text"], _score(query, c["text"]), dict(file=c["file"]),
                     "knowledge_base") for c in self.knowledge.get(datapack_id, [])]
-        hits += [h for h in self._memory_hits(datapack_id, query) if h.source == "collective"]
+        hits += self._memory_hits(datapack_id, query, promoted=True)
         return sorted([h for h in hits if h.score > 0], key=lambda h: -h.score)
 
     def knowledge_search(self, datapack_id, conversation_id, agent_id, query, limit=5) -> list[Hit]:

@@ -17,8 +17,12 @@ payments per period.
 | Legitimate bank changes blocked until a call, per period | 0 | 4.45 | 2.35 |
 | Vendors frozen by a wrong pattern match, per period | 0 | 0 | 3.70 |
 | Hours before the target payment run (stopped attacks, mean) | 62.2 | 86.3 | 95.3 |
-| Context tokens per payment decision from retrieval | 1,350 | 1,369 | 1,705 |
+| Context tokens per payment decision from retrieval | 1,350 | 1,369 | 1,722* |
 | Raw 30-day vendor history, tokens per payment decision | 771 | 771 | 771 |
+
+\* 1,705 in the first run. On the same evening the simulator was aligned with what real Meko does (promoted memories
+leave `memory_search` and are read with `memory_get_all(promoted=True)`, `docs/MEKO_SMOKE.md`). Re-running seeds
+101-120 gave identical decisions and numbers, except this one: reading the whole collective memory costs 1,722 tokens.
 
 ## Hypotheses
 - **H1 holds.** Shared memory stops 156 attacks against 81 in silos, and fewer in no seed (per seed: shared 7-8 of 8,

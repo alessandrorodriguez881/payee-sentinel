@@ -65,6 +65,7 @@ BANK_WORDS = re.compile(r"bank details|IBAN|account details|new account", re.I)
 URGENT_WORDS = re.compile(r"urgent|as soon as possible|today if possible|before friday|being closed", re.I)
 RECON_WORDS = re.compile(r"list of (all )?open invoices|next payment date", re.I)
 PHONE_IN_TEXT = re.compile(r"\+\d{2} \d{3} \d{7}")
+PATTERN_TYPES = re.compile(r"Signal types: \[([^\]]+)\]")
 
 
 @dataclass
@@ -164,11 +165,18 @@ class Memory:
         return out
 
     def patterns(self, agent: str) -> list[Hit]:
+        """Attack patterns a person approved: the collective memory of `sentinel-patterns`. Promotion drops the
+        metadata, so the signal types are read back from the text (`Signal types: [a, b]`)."""
         if self.mode != "learning":
             return []
-        hits = self.store.memory_search(self.patterns_dp, self.conversation(agent), agent,
-                                        "confirmed attack pattern signal types", limit=20)
-        return [h for h in hits if h.source == "collective" and h.metadata.get("kind") == "pattern"]
+        out = []
+        for h in self.store.collective(self.patterns_dp, self.conversation(agent), agent):
+            m = PATTERN_TYPES.search(h.text)
+            if m:
+                out.append(Hit(h.id, h.text, h.score, dict(h.metadata, kind="pattern",
+                                                            signal_types=[t.strip() for t in m[1].split(",")]),
+                               h.source))
+        return out
 
 
 def risk_of(signals: list[Signal]) -> tuple[int, list[str]]:

@@ -8,12 +8,18 @@ the `Mcp-Session-Id`, read SSE or JSON replies, unwrap double-encoded JSON. Rule
 - listing learnings and promoting memories go through the REST API (`/memories?scope=learnings`,
   `/promote-memories`).
 
-The shapes of some tool replies are not documented, so the parsing below accepts the usual variants
-(`results`, `items`, `memories`; `memory`, `text`, `content`). `scripts/meko_smoke.py` prints raw replies to check.
+Checked against the real service on 2026-11-08 (`scripts/meko_smoke.py`, `docs/MEKO_SMOKE.md`):
+- `memory_add` wants `metadata` as a JSON *string*; searches give it back as an object, and explicit text is stored
+  as written (only memories extracted from saved conversations are rewritten by Meko's LLM);
+- `context_search` answers `{"results": {"memory": [...], "knowledge_base": [...], "conversation": {"hits": [...]}},
+  "token_savings": {...}, "match_quality": ...}`;
+- the REST knowledge upload answered 404, so files go through `knowledgebase_upload_document` (a presigned S3 POST);
+- a search takes 12-16 s, so agents should search once per vendor and decision, not per signal.
 """
 from __future__ import annotations
 
 import base64
+import hashlib
 import itertools
 import json
 import os
@@ -57,15 +63,25 @@ def _items(obj: Any) -> list[dict]:
 
 
 def _text(item: dict) -> str:
-    for key in ("memory", "text", "content", "chunk", "output", "document"):
+    for key in ("memory", "text", "content", "chunk_text", "chunk", "output", "document", "data"):
         if isinstance(item.get(key), str):
             return item[key]
     return json.dumps(item)[:500]
 
 
 def _hits(obj: Any, source: str) -> list[Hit]:
-    return [Hit(str(i.get("id") or i.get("memory_id") or i.get("document_id") or ""), _text(i),
-                float(i.get("score") or 0.0), i.get("metadata") or {}, source) for i in _items(obj)]
+    out = []
+    for i in _items(obj):
+        meta = i.get("metadata") or {}
+        if isinstance(meta, str):
+            try:
+                meta = json.loads(meta)
+            except ValueError:
+                meta = {"raw": meta}
+        out.append(Hit(str(i.get("id") or i.get("memory_id") or i.get("document_id") or ""), _text(i),
+                       float(i.get("score") or i.get("rerank_score") or 0.0), dict(meta, agent_id=i.get("agent_id")),
+                       source))
+    return out
 
 
 class MekoClient:
@@ -128,9 +144,13 @@ class MekoClient:
         if (result or {}).get("isError"):
             raise MekoError(f"{name}: " + ("\n".join(texts) or "failed"))
         out = _unwrap(texts[0]) if texts else result
+        returned = 0
+        if name.endswith("search"):
+            body = out.get("results", out) if isinstance(out, dict) else out
+            buckets = body.values() if isinstance(body, dict) else [body]
+            returned = approx_tokens(" ".join(h.text for b in buckets for h in _hits(b, "")))
         self.calls.append(Call(now_iso(), agent_id, name, args.get("datapack_id", ""), args.get("conversation_id"),
-                               summary or name, round((time.perf_counter() - t0) * 1000, 1),
-                               approx_tokens(out) if name.endswith("search") else 0))
+                               summary or name, round((time.perf_counter() - t0) * 1000, 1), returned))
         return out
 
     def _rest(self, method: str, path: str, **kw) -> Any:
@@ -173,8 +193,9 @@ class MekoClient:
 
     # ---------- memory ----------
     def memory_add(self, datapack_id, conversation_id, agent_id, text, metadata=None) -> list[str]:
-        out = self._tool(agent_id, "memory_add", dict(datapack_id=datapack_id, conversation_id=conversation_id,
-                                                       agent_id=agent_id, text=text, metadata=metadata), text[:120])
+        out = self._tool(agent_id, "memory_add", dict(
+            datapack_id=datapack_id, conversation_id=conversation_id, agent_id=agent_id, text=text,
+            metadata=json.dumps(metadata) if metadata is not None else None), text[:120])
         return [str(i.get("id")) for i in _items(out) if i.get("id")]
 
     def memory_search(self, datapack_id, conversation_id, agent_id, query, limit=10) -> list[Hit]:
@@ -187,9 +208,21 @@ class MekoClient:
     def context_search(self, datapack_id, conversation_id, agent_id, query, limit=10) -> dict[str, list[Hit]]:
         out = self._tool(agent_id, "context_search", dict(datapack_id=datapack_id, conversation_id=conversation_id,
                                                            agent_id=agent_id, query=query, limit=limit), query)
-        buckets = out if isinstance(out, dict) else {}
-        return {b: _hits(buckets.get(b) or buckets.get(b + "s") or [], b)
-                for b in ("memory", "knowledge_base", "conversation")}
+        self.last_token_savings = out.get("token_savings") if isinstance(out, dict) else None
+        buckets = out.get("results", out) if isinstance(out, dict) else {}
+        conv = buckets.get("conversation") or {}
+        return {"memory": _hits(buckets.get("memory") or [], "memory"),
+                "knowledge_base": _hits(buckets.get("knowledge_base") or [], "knowledge_base"),
+                "conversation": _hits(conv.get("hits", []) if isinstance(conv, dict) else conv, "conversation")}
+
+    def collective(self, datapack_id, conversation_id, agent_id) -> list[Hit]:
+        """Promoted memories. They no longer appear in `memory_search` and lose their metadata, so callers read what
+        they need from the text."""
+        out = self._tool(agent_id, "memory_get_all", dict(datapack_id=datapack_id, conversation_id=conversation_id,
+                                                           agent_id=agent_id, promoted=True), "collective memory")
+        items = out.get("promoted_memories", []) if isinstance(out, dict) else []
+        return [Hit(str(i.get("id")), str(i.get("data", "")), 1.0, {"promoted_at": i.get("promoted_to_kb_at")},
+                    "collective") for i in items]
 
     # ---------- learnings and promotion ----------
     def list_learnings(self, datapack_id) -> list[Hit]:
@@ -200,10 +233,20 @@ class MekoClient:
         return list(out.get("inserted_ids", [])) + list(out.get("updated_ids", []))
 
     # ---------- knowledge base and artifacts ----------
-    def knowledge_upload(self, datapack_id, filename, content: bytes) -> str:
-        out = self._rest("POST", f"/datapacks/{datapack_id}/knowledge-bases/upload",
-                         files={"file": (filename, content)})
-        return out.get("document_key", "")
+    def knowledge_upload(self, datapack_id, filename, content: bytes, conversation_id: str | None = None) -> str:
+        """Ask Meko for a presigned S3 POST, send the file there, and return the document key (indexing goes on in
+        the background; `knowledgebase_document_status` reports it)."""
+        cid = conversation_id or self.conversation_create(datapack_id, "setup", "knowledge upload")
+        out = self._tool("setup", "knowledgebase_upload_document", dict(
+            datapack_id=datapack_id, conversation_id=cid, filename=filename, size=len(content),
+            content_hash=hashlib.sha256(content).hexdigest(),
+            content_head_base64=base64.b64encode(content[:3072]).decode()), filename)
+        if not out.get("already_uploaded"):
+            res = httpx.post(out["url"], data=out.get("fields") or {}, files={"file": (filename, content)},
+                             timeout=60)
+            if res.status_code >= 300:
+                raise MekoError(f"knowledge upload to storage failed: {res.status_code} {res.text[:200]}")
+        return out.get("key", "")
 
     def knowledge_search(self, datapack_id, conversation_id, agent_id, query, limit=5) -> list[Hit]:
         out = self._tool(agent_id, "knowledgebase_search", dict(datapack_id=datapack_id,

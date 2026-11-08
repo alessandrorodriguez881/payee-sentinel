@@ -2,7 +2,8 @@
 
 Run once the key is in `.env`:   python scripts/meko_smoke.py
 It works in its own datapack, `sentinel-smoke` (the Free plan allows 10 datapacks and deleting one does not give the
-slot back), makes about 15 calls, and never prints the key. Paste the output into docs/MEKO_SMOKE.md.
+slot back), makes about 15 calls, and never prints the key. Some replies include the account's name and e-mail:
+summarise them in docs/MEKO_SMOKE.md, do not paste them.
 """
 from __future__ import annotations
 
@@ -33,11 +34,10 @@ def main() -> None:
             dp, cid, "inbox", "Email from accounts@nordwind-logistik.de asks to change the IBAN.",
             "Flagged: bank-change request, urgency.", reasoning="Bank words and urgency in the same email.",
             plan=["search memory for the vendor", "write signals"])),
-        ("memory_add with metadata", lambda: m._tool("inbox", "memory_add", dict(
-            datapack_id=dp, conversation_id=cid, agent_id="inbox",
-            text="Risk signal email.bank_change_request for vendor V001 Nordwind Logistik GmbH, weight 1.",
-            metadata={"kind": "signal", "type": "email.bank_change_request", "vendor_id": "V001",
-                      "at": "2026-10-13T16:05:00", "weight": 1, "agent": "inbox", "evidence": ["E00001"]}))),
+        ("memory_add with metadata", lambda: m.memory_add(
+            dp, cid, "inbox", "Risk signal email.bank_change_request for vendor V001 Nordwind Logistik GmbH, weight 1.",
+            {"kind": "signal", "type": "email.bank_change_request", "vendor_id": "V001", "at": "2026-10-13T16:05:00",
+             "weight": 1, "agent": "inbox", "evidence": ["E00001"]})),
         ("memory_search (raw, another agent)", lambda: m._tool("payments", "memory_search", dict(
             datapack_id=dp, conversation_id=cid, agent_id="payments",
             query="risk signals for vendor V001 Nordwind Logistik GmbH", limit=10))),
@@ -45,7 +45,8 @@ def main() -> None:
             datapack_id=dp, conversation_id=cid, agent_id="payments", query="Nordwind IBAN change", limit=5))),
         ("knowledge upload", lambda: m.knowledge_upload(dp, "payment-policy.md", (
             b"# Payment policy\n\nA bank-change request is confirmed by calling the phone number that was on file "
-            b"at least 60 days before the request.\n"))),
+            b"at least 60 days before the request.\n"), cid)),
+        ("collective memory (promoted)", lambda: [h.__dict__ for h in m.collective(dp, cid, "payments")]),
         ("learnings waiting", lambda: [h.__dict__ for h in m.list_learnings(dp)]),
         ("artifact_put", lambda: m.artifact_put(dp, cid, "auditor", "case.md", b"# Case\nheld", "text/markdown")),
         ("track_token_usage", lambda: m.track_tokens(dp, cid, "inbox", 120, 40, "claude-sonnet-5-5")),

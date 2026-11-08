@@ -40,8 +40,10 @@ def test_local_meko_promotion_is_one_way_and_stays_in_its_datapack():
     assert m.promote(a, [mid]) == [mid]
     assert m.promote(a, [mid]) == []                      # already moved
     hits = m.context_search(a, cid, "y", "vendor V001 IBAN")
-    assert hits["memory"][0].source == "collective"
-    assert hits["knowledge_base"][0].id == mid           # collective memory is part of shared knowledge
+    assert hits["memory"] == []                           # like real Meko: promoted memories leave memory_search
+    assert hits["knowledge_base"][0].id == mid           # ...and join the shared knowledge side
+    [c] = m.collective(a, cid, "y")
+    assert (c.id, c.source, c.metadata) == (mid, "collective", {})   # listed without metadata, as in Meko
 
 
 def test_local_meko_free_plan_datapack_cap():
@@ -113,6 +115,16 @@ def test_meko_client_speaks_mcp_and_parses_search_results():
             text = json.dumps(json.dumps(payload))          # double-encoded, as some Meko tools do
             return httpx.Response(200, headers={"content-type": "text/event-stream"},
                                   text=_sse(body["id"], {"content": [{"type": "text", "text": text}]}))
+        if name in ("memory_add", "memory_get_all"):
+            args = body["params"]["arguments"]
+            if name == "memory_add":
+                assert isinstance(args["metadata"], str)       # real Meko rejects an object here (8-nov)
+                payload = {"results": [{"id": "m2", "memory": args["text"], "event": "ADD"}]}
+            else:
+                payload = {"promoted_memories": [{"id": "p1", "data": "Signal types: [a, b, c]",
+                                                  "promoted_to_kb_at": "2026-11-08T18:21:36Z"}]}
+            return httpx.Response(200, json={"jsonrpc": "2.0", "id": body["id"], "result": {
+                "content": [{"type": "text", "text": json.dumps(payload)}]}})
         return httpx.Response(200, json={"jsonrpc": "2.0", "id": body["id"], "result": {
             "isError": True, "content": [{"type": "text", "text": "conversation_id Missing required argument"}]}})
 
@@ -120,6 +132,9 @@ def test_meko_client_speaks_mcp_and_parses_search_results():
     hits = client.memory_search("dp", "c1", "payments", "vendor V001")
     assert [(h.id, h.text, h.metadata["kind"]) for h in hits] == [("m1", "vendor V001 changed IBAN", "signal")]
     assert seen[:2] == ["initialize", "notifications/initialized"]
+    assert client.memory_add("dp", "c1", "inbox", "signal text", {"kind": "signal"}) == ["m2"]
+    [p] = client.collective("dp", "c1", "payments")
+    assert (p.id, p.text, p.source) == ("p1", "Signal types: [a, b, c]", "collective")
     with pytest.raises(MekoError, match="conversation_id"):
         client.knowledge_search("dp", "c1", "payments", "policy")
 
