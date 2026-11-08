@@ -41,7 +41,7 @@ class CaseResult:
     kind: str
     vendor_id: str
     stopped: bool = False
-    stage: str | None = None             # early | at_payment
+    stage: str | None = None             # early | at_payment | contained (caught after a payment had gone out)
     first_action_at: str | None = None
     hours_before_target: float | None = None
     loss_eur: float = 0.0
@@ -260,6 +260,9 @@ def run(world: World, mode: str, store=None) -> RunResult:
                 mem.freezes.remove(f)
                 learn_legit(f.vendor_id, f.at, "a freeze from a pattern match")
                 mem.resolve(f.vendor_id, f.at, "pattern match reviewed: the vendor's activity is legitimate.")
+    for r in results.values():
+        if r.loss_eur > 0 and r.stopped:    # caught only after money had left: contained, not stopped (HYPOTHESES.md)
+            r.stopped, r.stage = False, "contained"
     out.meko_calls = dict(Counter(c.tool for c in store.calls))
     return out
 
@@ -274,6 +277,7 @@ def summarize(results: list[RunResult]) -> dict:
         stopped = [a for r in rs for a in r.attacks if a.stopped]
         table[mode] = dict(
             worlds=len(rs), attacks=n_att, stopped=len(stopped), early=sum(a.stage == "early" for a in stopped),
+            contained=sum(a.stage == "contained" for r in rs for a in r.attacks),
             loss_eur=round(sum(r.loss for r in rs), 2),
             fp_holds_per_world=round(statistics.mean(r.fp_holds for r in rs), 2),
             fp_step_ups_per_world=round(statistics.mean(r.fp_step_ups for r in rs), 2),

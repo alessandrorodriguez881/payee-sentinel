@@ -23,8 +23,13 @@ in Meko, and the agents that apply bank changes or release payments search that 
 | Money sent to attackers | €2.81M | €0.13M |
 | Cost per six weeks | none | 1.45 false holds, 4.5 step-up calls, 4.45 legitimate bank changes held for a call |
 
+A second, independent set of 20 periods (seeds 201-220) repeats it: 158 of 160 stopped with shared memory against 82
+in silos, and €7,274 lost against €4.30M.
+
 The learning loop (approved attack patterns promoted to collective memory) did **not** improve on shared memory in
-this run, and it raised the analysts' workload. It is being redesigned.
+round 1, and it raised the analysts' workload. Version 2 also remembers the legitimate look-alikes the analyst
+confirms: wrong freezes fall by more than half and it acts about 6 hours earlier, but it still costs more friction than
+shared memory alone over six weeks. Both rounds, with their failed hypotheses, are in `docs/RESULTS.md`.
 
 ## Run it
 ```bash
