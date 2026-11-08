@@ -8,8 +8,9 @@ A simulated analyst plays the person in the loop, with only what a real analyst 
 - a held payment or a blocked bank change is reviewed by calling the vendor on the number on file 60+ days ago,
   which tells a real request from an attack;
 - a payment that went to an attacker is discovered 10 days later, when the real vendor chases its money.
-Each confirmed attack becomes a pattern candidate in `sentinel-patterns` (the auditor writes it). In `learning` mode
-the analyst approves it and it is promoted to collective memory.
+Each confirmed attack becomes a pattern candidate in `sentinel-patterns` (the auditor writes it). In the learning modes
+the analyst approves it and it is promoted to collective memory. In `learning2`, each case the analyst finds legitimate
+is also written up, as a legitimate look-alike in `sentinel-legit`, and promoted.
 
     python -m payee_sentinel.evaluate --seeds 1-5
 """
@@ -23,15 +24,14 @@ import json
 from pathlib import Path
 import statistics
 
-from .agents import (Action, InboxAgent, LOOKBACK, Memory, PaymentAgent, PortalAgent, Signal, SupportAgent,
-                     VendorMasterAgent, risk_of)
+from .agents import (LEARNING_MODES, LOOKBACK, MODES, Action, InboxAgent, Memory, PaymentAgent, PortalAgent, Signal,
+                     SupportAgent, VendorMasterAgent, observable)
 from .context.base import approx_tokens
 from .context.local import LocalMeko
 from .scenario import START, Event, World, generate
 
 DISCOVERY_DELAY = timedelta(days=10)
 PAY_HORIZON = timedelta(days=7)          # a run pays what falls due in the next 7 days
-NOT_PATTERN = ("pay.", "pattern.")       # signal types that describe our own reaction, not the attacker
 RETRIEVALS = ("memory_search", "memory_get_all", "context_search", "knowledgebase_search")  # calls that fill context
 
 
@@ -59,6 +59,7 @@ class RunResult:
     blocked_legit_changes: int = 0
     false_freezes: int = 0
     patterns_promoted: int = 0
+    legit_promoted: int = 0
     meko_calls: dict = field(default_factory=dict)
     retrieval_tokens: list[int] = field(default_factory=list)
     stuffing_tokens: list[int] = field(default_factory=list)
@@ -114,26 +115,46 @@ def run(world: World, mode: str, store=None) -> RunResult:
         if not r.stopped:
             r.stopped, r.stage = True, stage
 
+    def vendor_types(vendor_id: str, at: datetime) -> list[str]:
+        """What the vendor showed in the 30 days before `at`, as the auditor finds it in shared memory."""
+        hits = store.memory_search(mem.signals_dp, mem.conversation("auditor"), "auditor",
+                                   f"risk signals for vendor {vendor_id} {world.vendors[vendor_id].name}", limit=30)
+        sigs = [s for h in hits if (s := Signal.from_hit(h)) and s.vendor_id == vendor_id
+                and at - LOOKBACK <= s.at <= at]
+        return sorted(observable(s.type for s in sigs))
+
     def confirm_attack(vendor_id: str, at: datetime, case_id: str) -> None:
         """The analyst confirms an attack; the auditor writes it up as a pattern candidate."""
         if case_id in reviewed:
             return
         reviewed.add(case_id)
-        hits = store.memory_search(mem.signals_dp, mem.conversation("auditor"), "auditor",
-                                   f"risk signals for vendor {vendor_id} {world.vendors[vendor_id].name}", limit=30)
-        sigs = [s for h in hits if (s := Signal.from_hit(h)) and s.vendor_id == vendor_id
-                and at - LOOKBACK <= s.at <= at]
-        types = sorted({s.type for s in sigs if not s.type.startswith(NOT_PATTERN)})
+        types = vendor_types(vendor_id, at)
         mem.resolve(vendor_id, at, "attack confirmed by calling the vendor; real bank details restored.")
         mem.freezes.append(Action(at, "analyst", "freeze_vendor", vendor_id, 0, ["confirmed incident"], case_id))
         if len(types) < 2:
             return
+        if mode == "learning2" and any(set(p.metadata["signal_types"]) == set(types)
+                                       for p in mem.patterns("auditor")):
+            return                                     # the same pattern is already in collective memory
         text = (f"Confirmed attack pattern on vendor {vendor_id}: these signals appeared within 30 days before an "
                 f"attempt to redirect payments to a new bank account. Signal types: [{', '.join(types)}]")
         ids = store.memory_add(mem.patterns_dp, mem.conversation("auditor"), "auditor", text,
                                dict(kind="pattern", signal_types=types, learning_candidate=True, case=case_id))
-        if mode == "learning":
+        if mode in LEARNING_MODES:
             out.patterns_promoted += len(store.promote(mem.patterns_dp, ids))
+
+    def learn_legit(vendor_id: str, at: datetime, what: str) -> None:
+        """Learning v2: the analyst found a flagged case legitimate; the auditor writes it up and it is promoted."""
+        if mode != "learning2":
+            return
+        types = vendor_types(vendor_id, at)
+        if len(types) < 2 or any(set(p.metadata["signal_types"]) == set(types) for p in mem.legit_patterns("auditor")):
+            return
+        text = (f"Legitimate look-alike confirmed by the analyst on vendor {vendor_id} ({what}): these signals appeared "
+                f"within 30 days before a change the vendor really made. Signal types: [{', '.join(types)}]")
+        ids = store.memory_add(mem.legit_dp, mem.conversation("auditor"), "auditor", text,
+                               dict(kind="legit_pattern", signal_types=types, learning_candidate=True))
+        out.legit_promoted += len(store.promote(mem.legit_dp, ids))
 
     def under_attack(vendor_id: str, at: datetime) -> str | None:
         """An attack on this vendor that has started and is not stopped yet (hidden truth, used only to score)."""
@@ -154,6 +175,7 @@ def run(world: World, mode: str, store=None) -> RunResult:
                 current[act.vendor_id] = req.data["new_iban"]          # the analyst clears it after a call
                 changed_at[act.vendor_id] = act.at + timedelta(days=1)
                 mem.freezes[:] = [f for f in mem.freezes if f.vendor_id != act.vendor_id]
+                learn_legit(act.vendor_id, act.at, "a bank change that was blocked")
                 mem.resolve(act.vendor_id, act.at, "bank change confirmed as legitimate by a call to the number "
                                                     "on file; applied.")
         if e.vendor_id in vm.applied and vm.applied[e.vendor_id][1] == e.ts:
@@ -223,6 +245,7 @@ def run(world: World, mode: str, store=None) -> RunResult:
                     else:
                         out.fp_step_ups += 1
                     paid_ibans.add(iban)                       # released after the analyst's call
+                    learn_legit(v.id, run_at, f"a payment that got a {act.kind.replace('_', '-')}")
                     mem.resolve(v.id, run_at, f"payment {inv.data['invoice_no']} confirmed as legitimate by a call "
                                               f"to the number on file; released.")
         for f in mem.freezes[n_freezes:]:
@@ -235,6 +258,7 @@ def run(world: World, mode: str, store=None) -> RunResult:
             elif not case:
                 out.false_freezes += 1                         # the analyst's call clears it
                 mem.freezes.remove(f)
+                learn_legit(f.vendor_id, f.at, "a freeze from a pattern match")
                 mem.resolve(f.vendor_id, f.at, "pattern match reviewed: the vendor's activity is legitimate.")
     out.meko_calls = dict(Counter(c.tool for c in store.calls))
     return out
@@ -276,7 +300,7 @@ def _seeds(text: str) -> list[int]:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--seeds", default="1-5")
-    ap.add_argument("--modes", default="siloed,shared,learning")
+    ap.add_argument("--modes", default=",".join(MODES))
     ap.add_argument("--out", default="")
     args = ap.parse_args()
     results = [run(generate(s), m) for s in _seeds(args.seeds) for m in args.modes.split(",")]

@@ -9,6 +9,9 @@ it searches Meko for the vendor's signals. How much it can see depends on the mo
 - `learning`: `shared`, plus attack patterns that a person approved after earlier incidents (promoted to collective
               memory in `sentinel-patterns`). A match freezes the vendor's bank details before anyone asks to change
               them.
+- `learning2`: `learning`, but it also remembers the legitimate look-alikes the analyst confirmed (promoted to
+              collective memory in `sentinel-legit`). A pattern match freezes the vendor only if it shows something no
+              confirmed legitimate case has shown. What it learns can only add a freeze, never remove a check.
 
 Money decisions are rules in code (weights and thresholds below, fixed on 8-nov-2026 before any evaluation run, see
 `docs/HYPOTHESES.md`). A model may read emails and write explanations, never decide a payment.
@@ -66,6 +69,13 @@ URGENT_WORDS = re.compile(r"urgent|as soon as possible|today if possible|before 
 RECON_WORDS = re.compile(r"list of (all )?open invoices|next payment date", re.I)
 PHONE_IN_TEXT = re.compile(r"\+\d{2} \d{3} \d{7}")
 PATTERN_TYPES = re.compile(r"Signal types: \[([^\]]+)\]")
+MODES = ("siloed", "shared", "learning", "learning2")
+LEARNING_MODES = ("learning", "learning2")
+OWN_REACTION = ("pay.", "pattern.")    # signal types that describe our own reaction, not what the vendor showed
+
+
+def observable(types) -> set[str]:
+    return {t for t in types if not t.startswith(OWN_REACTION)}
 
 
 @dataclass
@@ -118,10 +128,11 @@ class Memory:
     """What the agents share through Meko, seen through the mode of the run."""
 
     def __init__(self, store: ContextStore, mode: str, vendors: dict[str, Vendor]):
-        assert mode in ("siloed", "shared", "learning")
+        assert mode in MODES
         self.store, self.mode, self.vendors = store, mode, vendors
         self.signals_dp = store.ensure_datapack("sentinel-signals", "Raw risk signals from every channel agent")
         self.patterns_dp = store.ensure_datapack("sentinel-patterns", "Confirmed attack patterns and playbooks")
+        self.legit_dp = store.ensure_datapack("sentinel-legit", "Legitimate look-alikes confirmed by the analyst")
         self.audit_dp = store.ensure_datapack("sentinel-audit", "Audit reports and case files")
         self._conv: dict[str, str] = {}
         self.freezes: list[Action] = []   # vendors whose bank details a pattern match froze
@@ -164,19 +175,34 @@ class Memory:
             out.append(s)
         return out
 
-    def patterns(self, agent: str) -> list[Hit]:
-        """Attack patterns a person approved: the collective memory of `sentinel-patterns`. Promotion drops the
-        metadata, so the signal types are read back from the text (`Signal types: [a, b]`)."""
-        if self.mode != "learning":
-            return []
+    def _promoted_patterns(self, datapack_id: str, agent: str, kind: str) -> list[Hit]:
+        """Promotion drops the metadata, so the signal types are read back from the text (`Signal types: [a, b]`)."""
         out = []
-        for h in self.store.collective(self.patterns_dp, self.conversation(agent), agent):
+        for h in self.store.collective(datapack_id, self.conversation(agent), agent):
             m = PATTERN_TYPES.search(h.text)
             if m:
-                out.append(Hit(h.id, h.text, h.score, dict(h.metadata, kind="pattern",
+                out.append(Hit(h.id, h.text, h.score, dict(h.metadata, kind=kind,
                                                             signal_types=[t.strip() for t in m[1].split(",")]),
                                h.source))
         return out
+
+    def patterns(self, agent: str) -> list[Hit]:
+        """Attack patterns a person approved: the collective memory of `sentinel-patterns`."""
+        return self._promoted_patterns(self.patterns_dp, agent, "pattern") if self.mode in LEARNING_MODES else []
+
+    def legit_patterns(self, agent: str) -> list[Hit]:
+        """Legitimate look-alikes a person confirmed (learning v2 only): the collective memory of `sentinel-legit`."""
+        return self._promoted_patterns(self.legit_dp, agent, "legit") if self.mode == "learning2" else []
+
+    def learned_match(self, types: set[str], agent: str) -> Hit | None:
+        """The approved attack pattern the vendor's signals match, if any. In learning v2 a match does not count when
+        everything the vendor shows was also shown by a legitimate case the analyst confirmed."""
+        hit = pattern_match(types, self.patterns(agent))
+        if hit and self.mode == "learning2":
+            seen = observable(types)
+            if any(seen <= set(lp.metadata["signal_types"]) for lp in self.legit_patterns(agent)):
+                return None
+        return hit
 
 
 def risk_of(signals: list[Signal]) -> tuple[int, list[str]]:
@@ -229,17 +255,17 @@ class Agent:
     def emit(self, e: Event, type_: str, detail: str, **extra) -> Signal:
         sig = Signal(type_, e.vendor_id, e.ts, self.name, [e.id], detail, extra)
         self.mem.write(sig)
-        if self.mem.mode == "learning":
+        if self.mem.mode in LEARNING_MODES:
             self._check_patterns(e)
         return sig
 
     def _check_patterns(self, e: Event) -> None:
-        """Learning mode: after writing a signal, compare the vendor's signals with approved attack patterns.
+        """Learning modes: after writing a signal, compare the vendor's signals with approved attack patterns.
         A match freezes the vendor's bank details until a person clears them."""
         if self.mem.frozen(e.vendor_id):
             return
         sigs = self.mem.signals(self.name, e.vendor_id, e.ts)
-        hit = pattern_match({s.type for s in sigs}, self.mem.patterns(self.name))
+        hit = self.mem.learned_match({s.type for s in sigs}, self.name)
         if hit:
             risk, reasons = risk_of(sigs)
             sig = Signal("pattern.match", e.vendor_id, e.ts, self.name, [e.id],
@@ -405,8 +431,8 @@ class PaymentAgent(Agent):
             self.mem.write(s)
         sigs = self.mem.signals(self.name, v.id, run)
         types = {s.type for s in sigs}
-        if (self.mem.mode == "learning" and "pattern.match" not in types
-                and (hit := pattern_match(types, self.mem.patterns(self.name)))):
+        if (self.mem.mode in LEARNING_MODES and "pattern.match" not in types
+                and (hit := self.mem.learned_match(types, self.name))):
             own.append(Signal("pattern.match", v.id, run, self.name, [invoice.id],
                               f"The vendor's signals match approved attack pattern {hit.id[:8]}.",
                               dict(pattern_id=hit.id)))

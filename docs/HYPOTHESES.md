@@ -62,7 +62,7 @@ and blocked legitimate bank changes). The world is not changed again before the 
 attack is first acted on. H3's "share stopped early" turned out to be saturated on seeds 1-5 (35 of 40 in both
 `shared` and `learning`), so H3 is kept as written and E2 is reported next to it.
 
-## Round 2: learning v2 (written 2026-11-08, ~23:40 CET, before v2 existed)
+## Round 2: learning v2 (written 2026-11-08, ~23:25 CET, local commit `7e73f90`, before v2 existed)
 Round 1 (seeds 101-120, `docs/RESULTS.md`) showed that learning v1 adds work without stopping more attacks. On
 development seeds 1-5, its wrong pattern matches came from legitimate look-alikes: a new clerk (16 matches), an office
 move (9), a real new direct line (3). v1 only learns from attacks, never from the analyst's "this was legitimate".
