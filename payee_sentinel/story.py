@@ -285,7 +285,8 @@ class Lane:
             self.mem.resolve(vid, when, "attack confirmed by calling the vendor; real bank details kept.")
             self.mem.freezes.append(Action(when, "analyst", "freeze_vendor", vid, 0, ["confirmed incident"], vid))
             text = (f"Confirmed attack pattern on vendor {vid}: these signals appeared within 30 days before an "
-                    f"attempt to redirect payments to a new bank account. Signal types: [{', '.join(types)}]")
+                    f"attempt to redirect payments to a new bank account. Signal types: [{', '.join(types)}] "
+                    f"[run {self.mem.run_id}]")
             ids = self.store.memory_add(self.mem.patterns_dp, self.mem.conversation("auditor"), "auditor", text,
                                         dict(kind="pattern", signal_types=types, learning_candidate=True,
                                              vendor_id=vid))

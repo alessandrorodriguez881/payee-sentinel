@@ -189,9 +189,13 @@ class Memory:
         return out
 
     def _promoted_patterns(self, datapack_id: str, agent: str, kind: str) -> list[Hit]:
-        """Promotion drops the metadata, so the signal types are read back from the text (`Signal types: [a, b]`)."""
+        """Promotion drops the metadata, so the signal types are read back from the text (`Signal types: [a, b]`).
+        With a run id (demo runs on real Meko), only patterns tagged `[run <id>]` count, so earlier runs' collective
+        memory does not change the story."""
         out = []
         for h in self.store.collective(datapack_id, self.conversation(agent), agent):
+            if self.run_id and f"[run {self.run_id}]" not in h.text:
+                continue
             m = PATTERN_TYPES.search(h.text)
             if m:
                 out.append(Hit(h.id, h.text, h.score, dict(h.metadata, kind=kind,
@@ -207,10 +211,10 @@ class Memory:
         """Legitimate look-alikes a person confirmed (learning v2 only): the collective memory of `sentinel-legit`."""
         return self._promoted_patterns(self.legit_dp, agent, "legit") if self.mode == "learning2" else []
 
-    def learned_match(self, types: set[str], agent: str) -> Hit | None:
+    def learned_match(self, types: set[str], agent: str, patterns: list[Hit] | None = None) -> Hit | None:
         """The approved attack pattern the vendor's signals match, if any. In learning v2 a match does not count when
         everything the vendor shows was also shown by a legitimate case the analyst confirmed."""
-        hit = pattern_match(types, self.patterns(agent))
+        hit = pattern_match(types, self.patterns(agent) if patterns is None else patterns)
         if hit and self.mode == "learning2":
             seen = observable(types)
             if any(seen <= set(lp.metadata["signal_types"]) for lp in self.legit_patterns(agent)):
@@ -277,8 +281,11 @@ class Agent:
         A match freezes the vendor's bank details until a person clears them."""
         if self.mem.frozen(e.vendor_id):
             return
+        patterns = self.mem.patterns(self.name)
+        if not patterns:                 # nothing approved yet: skip the (slow, on real Meko) signal search
+            return
         sigs = self.mem.signals(self.name, e.vendor_id, e.ts)
-        hit = self.mem.learned_match({s.type for s in sigs}, self.name)
+        hit = self.mem.learned_match({s.type for s in sigs}, self.name, patterns)
         if hit:
             risk, reasons = risk_of(sigs)
             sig = Signal("pattern.match", e.vendor_id, e.ts, self.name, [e.id],

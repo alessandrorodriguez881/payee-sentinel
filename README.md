@@ -35,8 +35,12 @@ shared memory alone over six weeks. Both rounds, with their failed hypotheses, a
 ```bash
 pip install -r requirements.txt
 python -m pytest -q
-python -m payee_sentinel.evaluate --seeds 1-5
+streamlit run app.py                                  # the demo: two weeks, siloed agents vs agents sharing Meko
+python -m payee_sentinel.evaluate --seeds 1-5         # the measurement
 ```
+The demo replays the same two weeks for two teams of agents with the same rules: week 1, a takeover of Nordwind
+Logistik's supplier-portal account; week 2, the same crew on Bergmann Verpackung. After week 1 a person can promote
+the confirmed attack pattern to Meko's collective memory, and week 2 shows what changes.
 Without a `MEKO_API_KEY` everything runs on the offline simulator (`payee_sentinel/context/local.py`). With a key in
 `.env` (see `.env.example`), `python scripts/meko_smoke.py` checks every Meko feature used here against the real service.
 
