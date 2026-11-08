@@ -37,7 +37,7 @@ five kinds, 14 legitimate look-alike cases) are run three times, with the same a
   receives from Meko retrieval with the tokens of the vendor's raw 30-day history across all channels. Reported as
   measured.
 
-## Amendment 1 (2026-11-08, ~19:30 CET), after development seeds 1-5 and before any confirmation seed
+## Amendment 1 (2026-11-08, ~18:45 CET, local commit `499e275`), after development seeds 1-5 and before any confirmation seed
 Running seeds 1-5 showed problems in the engine and the world, not in the rules. Fixed before seeds 101-120 were run
 (weights and thresholds unchanged):
 1. **Bug: closed cases kept counting.** After an attack was confirmed, its signals kept holding every later payment to
