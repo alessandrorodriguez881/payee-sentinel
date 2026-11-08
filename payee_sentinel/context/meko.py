@@ -14,7 +14,8 @@ Checked against the real service on 2026-11-08 (`scripts/meko_smoke.py`, `docs/M
 - `context_search` answers `{"results": {"memory": [...], "knowledge_base": [...], "conversation": {"hits": [...]}},
   "token_savings": {...}, "match_quality": ...}`;
 - the REST knowledge upload answered 404, so files go through `knowledgebase_upload_document` (a presigned S3 POST);
-- a search takes 12-16 s, so agents should search once per vendor and decision, not per signal.
+- searches took 12-16 s in the first tests (19:20) and 1.7 s median (5.3 s max) in a full demo run at midnight, so
+  agents search once per vendor and decision, not per signal.
 """
 from __future__ import annotations
 
