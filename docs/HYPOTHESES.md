@@ -62,6 +62,28 @@ and blocked legitimate bank changes). The world is not changed again before the 
 attack is first acted on. H3's "share stopped early" turned out to be saturated on seeds 1-5 (35 of 40 in both
 `shared` and `learning`), so H3 is kept as written and E2 is reported next to it.
 
+## Round 2: learning v2 (written 2026-11-08, ~23:40 CET, before v2 existed)
+Round 1 (seeds 101-120, `docs/RESULTS.md`) showed that learning v1 adds work without stopping more attacks. On
+development seeds 1-5, its wrong pattern matches came from legitimate look-alikes: a new clerk (16 matches), an office
+move (9), a real new direct line (3). v1 only learns from attacks, never from the analyst's "this was legitimate".
+
+**Learning v2** (`learning2` mode): when the analyst confirms that a hold, a step-up, a blocked bank change or a freeze
+was legitimate, the auditor writes that case's signal types as a *legitimate look-alike* in a fourth datapack
+(`sentinel-legit`) and the analyst promotes it. An attack-pattern match then freezes the vendor only if the vendor
+shows at least one signal type that no promoted legitimate look-alike contains. What v2 learns can only add a freeze;
+it never removes a shared-memory check (bank-change blocks, holds and step-ups work as in `shared`).
+
+Confirmation seeds 201-220 (never run before). Seeds 101-120 have been seen, so they do not count for round 2. All four
+modes are run; weights and thresholds are unchanged.
+
+- **H5, v2 never loses an attack that sharing stops.** `learning2` stops at least as many attacks as `shared` in every
+  seed.
+- **H6, v2 nearly pays for itself.** Frictions per period (false-positive holds + legitimate bank changes blocked +
+  wrong freezes) with `learning2` are at most those of `shared` + 0.5.
+- **H7, v2 cuts wrong freezes.** `learning2` has at most half the wrong freezes of `learning` (v1).
+- **H8, v2 acts earlier.** Over stopped attacks, the mean hours before the target payment run are at least 5 hours more
+  with `learning2` than with `shared`.
+
 ## Known limits, stated now
 - The same author wrote the world and the agents, so the agents may "play at home". To push against that, every
   attack kind has variants that remove signals (a VPN in the vendor's own country, no failed logins, the clerk
