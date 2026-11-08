@@ -116,12 +116,12 @@ with story_tab:
                 st.markdown(f"**{LANES['siloed']}**")
                 st.error("Nordwind chases its €48,300 on 30 November. That is when the loss is found.",
                          icon=ICON["bad"])
-                for line in story.explain("siloed", "V001"):
+                for line in outcomes["siloed"].notes:
                     st.markdown(f"- {line}")
             with right:
                 st.markdown(f"**{LANES['learning2']}**")
                 with st.container(border=True):
-                    for line in story.explain("learning2", "V001"):
+                    for line in outcomes["learning2"].notes:
                         st.markdown(f"- {line}")
                 cand = meko_lane.candidates.get("V001")
                 if cand:
@@ -174,11 +174,11 @@ with meko_tab:
     counts[2].metric("Decisions with reasoning", sum(c.tool == "conversation_add_message" for c in calls),
                      border=True)
     counts[3].metric("Promotions by a person", sum(c.tool == "promote_memories" for c in calls), border=True)
-    st.caption("Every call the Meko lane made, newest first. On real Meko each decision also appears in the portal "
-               "as a decision trace.")
+    st.caption("Every call the Meko lane made, newest first. Each decision is saved twice: as a conversation turn with "
+               "its reasoning, and as a decision record the auditor agent searches when it explains a case.")
     st.dataframe([dict(time=datetime.fromisoformat(c.at).astimezone().strftime("%H:%M:%S"),
                        agent=AGENT_NAMES.get(c.agent_id, c.agent_id), call=c.tool,
-                       datapack=dp_name.get(c.datapack, c.datapack[:8]), what=c.summary,
+                       datapack=dp_name.get(c.datapack, c.datapack), what=c.summary,
                        results=c.found or None, ms=c.latency_ms) for c in reversed(calls)],
                  hide_index=True, alt="Calls the Meko lane made to Meko")
 
@@ -186,16 +186,16 @@ with meko_tab:
 with results_tab:
     st.markdown("Twenty synthetic six-week periods per round, 60 vendors each, 160 planted attacks and 400 legitimate "
                 "look-alikes. Hypotheses were written before each run; the offline simulator of Meko was used.")
-    st.table([
-        {"": "Attacks stopped", "Round 1 · silos": "81 of 160", "Round 1 · shared memory": "156 of 160",
-         "Round 2 · silos": "82 of 160", "Round 2 · shared memory": "158 of 160"},
-        {"": "Money sent to attackers", "Round 1 · silos": "€2.81M", "Round 1 · shared memory": "€0.13M",
-         "Round 2 · silos": "€4.30M", "Round 2 · shared memory": "€7,274"},
-        {"": "False holds per six weeks", "Round 1 · silos": "0", "Round 1 · shared memory": "1.45",
-         "Round 2 · silos": "0", "Round 2 · shared memory": "1.15"},
-        {"": "Bank changes held for a call", "Round 1 · silos": "0", "Round 1 · shared memory": "4.45",
-         "Round 2 · silos": "0", "Round 2 · shared memory": "4.60"},
-    ])
+    cols = ["Round 1 · silos", "Round 1 · shared memory", "Round 2 · silos", "Round 2 · shared memory",
+            "Round 2 · learning v2 (the demo's Meko lane)"]
+    rows = {"Attacks stopped (of 160)": ["81", "156", "82", "158", "158"],
+            "Money sent to attackers": ["€2.27M", "€0.13M", "€3.17M", "€7,274", "€7,274"],
+            "False holds per six weeks": ["0", "1.30", "0", "1.00", "1.10"],
+            "Step-up calls to real vendors": ["0", "4.50", "0", "4.15", "4.00"],
+            "Legitimate bank changes held for a call": ["0", "4.45", "0", "4.60", "3.45"],
+            "Vendors frozen by a wrong pattern match": ["0", "0", "0", "0", "1.60"]}
+    st.table([{"": name, **dict(zip(cols, values))} for name, values in rows.items()])
     st.caption("Learning from people (version 2) cut wrong freezes by more than half and acted about 6 hours earlier, "
-               "but over six weeks it cost more analyst work than shared memory alone. All hypotheses, including "
-               "the ones that failed, are in docs/RESULTS.md.")
+               "and it nearly pays for itself, but not quite over six weeks (6.15 frictions per period against "
+               "5.60). Every hypothesis, the ones that failed, and the scoring corrections made after an independent "
+               "code review are in docs/RESULTS.md.")

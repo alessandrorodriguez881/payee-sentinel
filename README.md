@@ -4,8 +4,9 @@ Accounts-payable agents that share what they see through [Meko](https://mekodata
 takeover is stopped before the money leaves. Built for ContextCon: Remember Everything (theme 03, "Remember the
 Attacker").
 
-> **Status, 8 Nov 2026: early work in progress.** The synthetic world, the agents, the evaluation and the Meko client
-> exist; the client has not yet been run against the real Meko service, and there is no demo screen yet.
+> **Status, 9 Nov 2026: work in progress.** The synthetic world, the agents, the measurement (two rounds) and a first
+> demo screen exist. The demo runs offline or on real Meko: the whole story took 73 s on the live service with the same
+> outcome as offline (`docs/MEKO_SMOKE.md`). Still to come: Claude reading the emails, the video and a public demo link.
 
 ## The idea
 A vendor takeover arrives in pieces: a password reset on the supplier portal from a new device, a changed contact
@@ -20,16 +21,17 @@ in Meko, and the agents that apply bank changes or release payments search that 
 | | agents in silos | shared memory |
 |---|---|---|
 | Attacks stopped | 81 of 160 | 156 of 160 |
-| Money sent to attackers | €2.81M | €0.13M |
-| Cost per six weeks | none | 1.45 false holds, 4.5 step-up calls, 4.45 legitimate bank changes held for a call |
+| Money sent to attackers | €2.27M | €0.13M |
+| Cost per six weeks | none | 1.30 false holds, 4.5 step-up calls, 4.45 legitimate bank changes held for a call |
 
 A second, independent set of 20 periods (seeds 201-220) repeats it: 158 of 160 stopped with shared memory against 82
-in silos, and €7,274 lost against €4.30M.
+in silos, and €7,274 lost against €3.17M.
 
 The learning loop (approved attack patterns promoted to collective memory) did **not** improve on shared memory in
 round 1, and it raised the analysts' workload. Version 2 also remembers the legitimate look-alikes the analyst
-confirms: wrong freezes fall by more than half and it acts about 6 hours earlier, but it still costs more friction than
-shared memory alone over six weeks. Both rounds, with their failed hypotheses, are in `docs/RESULTS.md`.
+confirms: wrong freezes fall by more than half and it acts about 6 hours earlier, and it nearly pays for itself, but not
+quite over six weeks (6.15 frictions per period against 5.60). Both rounds, with their failed hypotheses and the
+scoring corrections made after an independent code review, are in `docs/RESULTS.md`.
 
 ## Run it
 ```bash
@@ -46,6 +48,9 @@ Without a `MEKO_API_KEY` everything runs on the offline simulator (`payee_sentin
 
 ## Honest notes
 - All data is invented. IBANs have valid check digits around random account numbers.
+- One assumption shapes the siloed results: the vendor master keeps only the *current* contact values. Who changed a
+  phone number, and from where, is known only to the portal and the support line. That is why a vendor-master agent on
+  its own trusts a callback to a number the attacker put on file the day before.
 - The offline simulator ranks memories by shared words and exact entities; real Meko adds semantic search and
   extracts facts with an LLM. Results from each are reported separately.
 - The Meko MCP client follows the reference client in

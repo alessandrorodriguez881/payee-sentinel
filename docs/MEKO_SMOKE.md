@@ -37,6 +37,11 @@ Search latency varies a lot from one hour to the next; both measurements are rep
 - A full six-week world on real Meko means hundreds of searches: minutes at best, hours at the first tests' latency,
   and a dent in the Free plan's 10,000 retrievals a month. The large evaluation stays on the simulator; real Meko
   runs the demo story (73 s) and, later, a measured sample, with one search per vendor and payment run.
+- Repeated demo runs write into the same datapacks, so an independent code review asked whether earlier rehearsals
+  crowd a run's own memories out of the search results. On the simulator they did from the sixth rehearsal on (the
+  metadata filter only works on what a search returns). Fix: demo runs put their run id in each memory's text and in
+  the query, and search with a limit of 50. Ten rehearsals in a row then give the same decisions on the simulator;
+  on real Meko this is still to be checked.
 - The simulator was aligned with these findings the same evening. Re-running the confirmation seeds gave identical
   decisions (`docs/RESULTS.md`).
 - Open questions: why the REST upload returns 404; whether search latency is lower outside the Free plan or at other

@@ -58,6 +58,8 @@ class RunResult:
     fp_step_ups: int = 0
     blocked_legit_changes: int = 0
     false_freezes: int = 0
+    fake_invoices_held: int = 0          # the attacker's own invoice held: a true positive
+    holds_on_attacked_vendors: int = 0   # real invoices of a vendor whose attack was already caught: counted apart
     patterns_promoted: int = 0
     legit_promoted: int = 0
     meko_calls: dict = field(default_factory=dict)
@@ -116,18 +118,24 @@ def run(world: World, mode: str, store=None) -> RunResult:
             r.stopped, r.stage = True, stage
 
     def vendor_types(vendor_id: str, at: datetime) -> list[str]:
-        """What the vendor showed in the 30 days before `at`, as the auditor finds it in shared memory."""
+        """What the vendor showed in the 30 days before `at`, as the auditor finds it in shared memory, counting only
+        the current case: signals up to the vendor's last resolution belong to a case already closed."""
         hits = store.memory_search(mem.signals_dp, mem.conversation("auditor"), "auditor",
                                    f"risk signals for vendor {vendor_id} {world.vendors[vendor_id].name}", limit=30)
+        closed = max((datetime.fromisoformat(h.metadata["at"]) for h in hits
+                      if h.metadata.get("kind") == "resolution" and h.metadata.get("vendor_id") == vendor_id
+                      and datetime.fromisoformat(h.metadata["at"]) <= at), default=datetime.min)
         sigs = [s for h in hits if (s := Signal.from_hit(h)) and s.vendor_id == vendor_id
-                and at - LOOKBACK <= s.at <= at]
+                and max(at - LOOKBACK, closed) < s.at <= at]
         return sorted(observable(s.type for s in sigs))
 
     def confirm_attack(vendor_id: str, at: datetime, case_id: str) -> None:
-        """The analyst confirms an attack; the auditor writes it up as a pattern candidate."""
+        """The analyst confirms an attack, restores the real bank account and freezes it; the auditor writes the case
+        up as a pattern candidate."""
         if case_id in reviewed:
             return
         reviewed.add(case_id)
+        current[vendor_id] = world.vendors[vendor_id].iban   # also after a loss found 10 days later
         types = vendor_types(vendor_id, at)
         mem.resolve(vendor_id, at, "attack confirmed by calling the vendor; real bank details restored.")
         mem.freezes.append(Action(at, "analyst", "freeze_vendor", vendor_id, 0, ["confirmed incident"], case_id))
@@ -239,6 +247,14 @@ def run(world: World, mode: str, store=None) -> RunResult:
                                                      f"{', '.join(act.reasons[:3])})")
                     confirm_attack(v.id, run_at, active)
                     paid_ibans.add(iban)
+                elif inv.attack_id:
+                    out.fake_invoices_held += 1                # the attacker's own invoice: held, never paid
+                elif v.id in attack_vendors and any(x.ts <= run_at for x in world.events
+                                                    if x.attack_id == attack_vendors[v.id].id):
+                    out.holds_on_attacked_vendors += 1         # a real invoice after a caught attack: not a new alarm
+                    paid_ibans.add(iban)
+                    mem.resolve(v.id, run_at, f"payment {inv.data['invoice_no']} to the real account after the "
+                                              f"confirmed attack; released.")
                 else:
                     if act.kind == "hold":
                         out.fp_holds += 1
@@ -283,6 +299,8 @@ def summarize(results: list[RunResult]) -> dict:
             fp_step_ups_per_world=round(statistics.mean(r.fp_step_ups for r in rs), 2),
             blocked_legit_changes_per_world=round(statistics.mean(r.blocked_legit_changes for r in rs), 2),
             false_freezes_per_world=round(statistics.mean(r.false_freezes for r in rs), 2),
+            fake_invoices_held=sum(r.fake_invoices_held for r in rs),
+            holds_on_attacked_vendors_per_world=round(statistics.mean(r.holds_on_attacked_vendors for r in rs), 2),
             mean_hours_before_target=round(statistics.mean([a.hours_before_target or 0 for a in stopped]), 1)
             if stopped else None,
             retrieval_tokens_per_decision=round(statistics.mean(t for r in rs for t in r.retrieval_tokens), 1),

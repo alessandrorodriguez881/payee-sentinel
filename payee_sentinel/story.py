@@ -132,17 +132,18 @@ CHAPTERS = [
             "The payments agent starts a new session with no conversation history and prepares five payments, "
             "including Nordwind's invoice of €48,300.", kind="payments"),
     Chapter("audit", RUNS["run1"] + timedelta(hours=1), "Thursday · why?",
-            "Anyone should be able to answer \"why did the agent do that?\" from the trace. A person then decides "
-            "whether this attack becomes collective memory for every agent.", kind="audit"),
-    Chapter("mon2", MON2 + timedelta(hours=9, minutes=12), "Next Monday · Bergmann Verpackung",
+            "Anyone should be able to answer \"why did the agent do that?\". The auditor agent rebuilds each answer "
+            "from what the agents saved in Meko: the decision record, its reasoning and the signals behind it. A "
+            "person then decides whether this attack becomes collective memory for every agent.", kind="audit"),
+    Chapter("mon2", MON2 + timedelta(hours=9, minutes=12), "Week 2, Monday · Bergmann Verpackung",
             "The same steps on another vendor: failed logins, a password reset from a new device in Russia, new "
             "contact email and phone.", events=_takeover("V002", MON2, 8) + _routine(MON2)),
-    Chapter("tue2", MON2 + timedelta(days=1, hours=9, minutes=5), "Next Tuesday · the same request",
+    Chapter("tue2", MON2 + timedelta(days=1, hours=9, minutes=5), "Week 2, Tuesday · the same request",
             "Bergmann's new contact address asks for payments to go to a new account, and the change arrives "
             "through the portal. The clerk's callback is planned for the afternoon.",
             events=_bank_change("V002", MON2 + timedelta(days=1, hours=9, minutes=5), timedelta(hours=6, minutes=15)),
             review_after=True),
-    Chapter("run2", RUNS["run2"], "Next Thursday · the payment run",
+    Chapter("run2", RUNS["run2"], "Week 2, Thursday · the payment run",
             "Four payments, including Bergmann's €31,750 and Nordwind's next invoice.", kind="payments"),
     Chapter("summary", RUNS["run2"] + timedelta(hours=1), "Two weeks later",
             "What reached the attackers, and when each team acted.", kind="summary"),
@@ -163,6 +164,11 @@ class Outcome:
     steps: list[Step]
     headline: str
     tone: str = "neutral"
+    notes: list[str] = field(default_factory=list)
+
+
+def _n(count: int, word: str) -> str:
+    return f"{count} {word}" if count == 1 else f"{count} {word}s"
 
 
 def _money(x: float) -> str:
@@ -203,6 +209,7 @@ class Lane:
         self.store.add_message(self.mem.signals_dp, conv, agent, f"{VENDORS[vendor_id].name}: {what}", what,
                                reasoning=reasoning, plan=[f"search Meko for {vendor_id}'s signals",
                                                           "add up the weights", rule])
+        self.mem.record_decision(agent, vendor_id, at, what, risk, rule, reasoning)
         self.decisions.setdefault(vendor_id, dict(agent=agent, at=at, what=what, risk=risk, reasons=reasons,
                                                   rule=rule, reasoning=reasoning))
         self.first_action.setdefault(vendor_id, at)
@@ -220,7 +227,9 @@ class Lane:
     # ---------- chapters ----------
     def run_events(self, chapter: Chapter) -> Outcome:
         steps: list[Step] = []
-        fails = 0
+        total_fails = {vid: sum(1 for e in chapter.events if e.vendor_id == vid and e.kind == "login"
+                                and not e.data["success"]) for vid in VENDORS}
+        first_fail = {}
         for e in chapter.events:
             if e.id.startswith("R-"):
                 self.agents["portal"].on_event(e)        # routine logins: no step on screen
@@ -233,14 +242,15 @@ class Lane:
             agent = e.channel if e.channel in self.agents else "vendor_master"
             title = _event_title(e)
             if e.kind == "login" and not e.data["success"]:
-                fails += 1
-                title = f"{e.ts:%a %H:%M} · {fails} failed portal logins from {e.data['device']} ({e.data['country']})"
+                first_fail.setdefault(e.vendor_id, e.ts)
+                title = (f"{first_fail[e.vendor_id]:%a %H:%M} · {total_fails[e.vendor_id]} failed portal logins "
+                         f"within a minute from {e.data['device']} ({e.data['country']})")
             step = Step(agent, title, self._signal_lines(self.mem.written[w0:]))
             own_reads = [(vid, sigs) for who, vid, sigs in self.mem.reads[r0:] if who == agent]
             if e.kind == "callback" and own_reads:
                 vid, sigs = own_reads[-1]
                 others = sorted({AGENT_NAMES[s.agent] for s in sigs if s.agent != agent})
-                step.lines.append(f"Searched memory for {VENDORS[vid].name}: {len(sigs)} signals in 30 days"
+                step.lines.append(f"Searched memory for {VENDORS[vid].name}: {_n(len(sigs), 'signal')} in 30 days"
                                   + (f", from {', '.join(others)}" if others else ", none from other agents"))
             for f in self.mem.freezes[f0:]:
                 step.tone = "good"
@@ -304,6 +314,7 @@ class Lane:
 
     def run_payments(self, chapter: Chapter) -> Outcome:
         run = chapter.when
+        self.mem.new_session("payments")             # every payment run starts with no conversation history
         step = Step("payments", f"{run:%a %H:%M} · new session, {len(INVOICES[chapter.key])} payments due")
         for inv in INVOICES[chapter.key]:
             v = VENDORS[inv.vendor_id]
@@ -396,7 +407,8 @@ class Story:
             elif ch.kind == "payments":
                 out[mode] = lane.run_payments(ch)
             else:
-                out[mode] = Outcome(ch.key, [], "")
+                notes = self.explain(mode, "V001", ch.when) if ch.kind == "audit" else []
+                out[mode] = Outcome(ch.key, [], "", notes=notes)
         self.done.append((ch, out))
 
     def promote(self, vendor_id: str) -> bool:
@@ -409,29 +421,29 @@ class Story:
         cand["promoted"] = True
         return True
 
-    def explain(self, mode: str, vendor_id: str) -> list[str]:
-        """Plain-language account of the first protective decision on a vendor, built from what was written to
-        memory (the decision trace)."""
+    def explain(self, mode: str, vendor_id: str, until: datetime) -> list[str]:
+        """Plain-language account of the first protective decision on a vendor. The auditor agent rebuilds it from
+        memory: the decision record it finds in `sentinel-audit` and the signals in `sentinel-signals`."""
         lane = self.lanes[mode]
-        d = lane.decisions.get(vendor_id)
         v = VENDORS[vendor_id]
-        if d is None:
-            sigs = [s for s in lane.mem.written if s.vendor_id == vendor_id]
-            per_agent = {}
-            for s in sigs:
+        found = lane.mem.decisions("auditor", vendor_id)
+        if not found:
+            per_agent: dict[str, list[Signal]] = {}
+            for s in lane.mem.history("auditor", vendor_id, until):
                 per_agent.setdefault(AGENT_NAMES[s.agent], []).append(s)
             lines = [f"No agent stopped anything for {v.name}. Each one saw only its own part:"]
             limits = {AGENT_NAMES["vendor_master"]: f"its limit to block a bank change is {BLOCK_BANK_CHANGE_AT}",
                       AGENT_NAMES["payments"]: f"its limit to hold a payment is {HOLD_AT}"}
             for name, ss in per_agent.items():
                 risk, _ = risk_of(ss)
-                lines.append(f"{name}: {len(ss)} signals, risk {risk} — "
+                lines.append(f"{name}: {_n(len(ss), 'signal')}, risk {risk} — "
                              + (limits.get(name) or "it decides nothing itself, and no other agent could read them"))
             return lines
-        lines = [f"**{AGENT_NAMES[d['agent']]}, {d['at']:%A %H:%M}: {d['what']}.** Risk {d['risk']}; "
-                 f"rule: {d['rule']}.", "What it found in Meko, written by other agents before it acted:"]
-        for s in sorted((s for s in lane.mem.written if s.vendor_id == vendor_id and s.at <= d["at"]),
-                        key=lambda s: s.at):
+        d = found[0]
+        at = datetime.fromisoformat(d["at"])
+        lines = [f"**{AGENT_NAMES[d['agent']]}, {at:%A %H:%M}: {d['what']}.** Risk {d['risk']}; rule: {d['rule']}.",
+                 "The signals it found in Meko before it acted:"]
+        for s in lane.mem.history("auditor", vendor_id, at):
             lines.append(f"{s.at:%a %H:%M} · {AGENT_NAMES[s.agent]} · `{s.type}` (+{s.weight}) — {s.detail}")
         lines.append(f"Reasoning saved with the decision: {d['reasoning']}")
         return lines

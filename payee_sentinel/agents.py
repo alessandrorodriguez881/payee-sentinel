@@ -99,7 +99,7 @@ class Signal:
 
     def metadata(self) -> dict:
         return dict(kind="signal", type=self.type, vendor_id=self.vendor_id, at=self.at.isoformat(),
-                    weight=self.weight, agent=self.agent, evidence=self.evidence, **self.extra)
+                    weight=self.weight, agent=self.agent, evidence=self.evidence, detail=self.detail, **self.extra)
 
     @classmethod
     def from_hit(cls, hit: Hit) -> "Signal | None":
@@ -107,9 +107,10 @@ class Signal:
         if m.get("kind") != "signal":
             return None
         extra = {k: v for k, v in m.items() if k not in ("kind", "type", "vendor_id", "at", "weight", "agent",
-                                                          "evidence", "agent_id")}
+                                                          "evidence", "agent_id", "detail", "run",
+                                                          "meko_datapack_id")}
         return cls(m["type"], m["vendor_id"], datetime.fromisoformat(m["at"]), m["agent"], list(m["evidence"]),
-                   hit.text, extra)
+                   m.get("detail", hit.text), extra)
 
 
 @dataclass
@@ -148,15 +149,25 @@ class Memory:
             self._conv[agent] = self.store.conversation_create(self.signals_dp, agent, f"{agent} agent session")
         return self._conv[agent]
 
+    def new_session(self, agent: str) -> str:
+        """A fresh conversation: the agent starts with no history, only what it finds in memory."""
+        self._conv.pop(agent, None)
+        return self.conversation(agent)
+
     def _tag(self, meta: dict) -> dict:
         return dict(meta, run=self.run_id) if self.run_id else meta
 
     def _ours(self, hit: Hit) -> bool:
         return self.run_id is None or hit.metadata.get("run") == self.run_id
 
+    def _run_words(self) -> str:
+        """Demo runs on real Meko share datapacks with earlier runs; the run id in the text and the query keeps a
+        run's own memories at the top of the ranking (the metadata filter alone works only on what comes back)."""
+        return f" Run {self.run_id}." if self.run_id else ""
+
     def write(self, sig: Signal) -> None:
         self.store.memory_add(self.signals_dp, self.conversation(sig.agent), sig.agent,
-                              sig.text(self.vendors[sig.vendor_id]), self._tag(sig.metadata()))
+                              sig.text(self.vendors[sig.vendor_id]) + self._run_words(), self._tag(sig.metadata()))
         self.written.append(sig)
 
     def resolve(self, vendor_id: str, at: datetime, verdict: str) -> None:
@@ -165,15 +176,43 @@ class Memory:
         v = self.vendors[vendor_id]
         self.store.memory_add(self.signals_dp, self.conversation("analyst"), "analyst",
                               f"Risk signals for vendor {vendor_id} {v.name} reviewed by the analyst at "
-                              f"{at:%Y-%m-%d %H:%M}: {verdict} Earlier signals are closed.",
+                              f"{at:%Y-%m-%d %H:%M}: {verdict} Earlier signals are closed." + self._run_words(),
                               self._tag(dict(kind="resolution", vendor_id=vendor_id, at=at.isoformat(),
                                              verdict=verdict)))
 
-    def signals(self, agent: str, vendor_id: str, now: datetime) -> list[Signal]:
+    def _vendor_hits(self, agent: str, vendor_id: str) -> list[Hit]:
         v = self.vendors[vendor_id]
-        hits = [h for h in self.store.memory_search(self.signals_dp, self.conversation(agent), agent,
-                                                    f"risk signals for vendor {vendor_id} {v.name}", limit=30)
-                if self._ours(h)]
+        query = f"risk signals for vendor {vendor_id} {v.name}" + (f" run {self.run_id}" if self.run_id else "")
+        limit = 50 if self.run_id else 30     # demo runs share datapacks with earlier rehearsals
+        return [h for h in self.store.memory_search(self.signals_dp, self.conversation(agent), agent, query,
+                                                    limit=limit) if self._ours(h)]
+
+    def history(self, agent: str, vendor_id: str, until: datetime) -> list[Signal]:
+        """Every signal about the vendor up to `until`, closed cases included: what an auditor reads."""
+        sigs = [s for h in self._vendor_hits(agent, vendor_id) if (s := Signal.from_hit(h))
+                and s.vendor_id == vendor_id and s.at <= until]
+        return sorted(sigs, key=lambda s: s.at)
+
+    def record_decision(self, agent: str, vendor_id: str, at: datetime, what: str, risk: int, rule: str,
+                        reasoning: str) -> None:
+        """Keep the decision itself as a memory in `sentinel-audit`, so an auditor can find it later."""
+        v = self.vendors[vendor_id]
+        self.store.memory_add(self.audit_dp, self.conversation(agent), agent,
+                              f"Decision on vendor {vendor_id} {v.name} by the {agent} agent at {at:%Y-%m-%d %H:%M}: "
+                              f"{what}. Risk {risk}; rule: {rule}. {reasoning}" + self._run_words(),
+                              self._tag(dict(kind="decision", vendor_id=vendor_id, at=at.isoformat(), agent=agent,
+                                             what=what, risk=risk, rule=rule, reasoning=reasoning)))
+
+    def decisions(self, agent: str, vendor_id: str) -> list[dict]:
+        v = self.vendors[vendor_id]
+        query = f"decision on vendor {vendor_id} {v.name}" + (f" run {self.run_id}" if self.run_id else "")
+        hits = self.store.memory_search(self.audit_dp, self.conversation(agent), agent, query, limit=20)
+        found = [h.metadata for h in hits if self._ours(h) and h.metadata.get("kind") == "decision"
+                 and h.metadata.get("vendor_id") == vendor_id]
+        return sorted(found, key=lambda d: d["at"])
+
+    def signals(self, agent: str, vendor_id: str, now: datetime) -> list[Signal]:
+        hits = self._vendor_hits(agent, vendor_id)
         closed = max((datetime.fromisoformat(h.metadata["at"]) for h in hits
                       if h.metadata.get("kind") == "resolution" and h.metadata.get("vendor_id") == vendor_id
                       and datetime.fromisoformat(h.metadata["at"]) <= now), default=datetime.min)
