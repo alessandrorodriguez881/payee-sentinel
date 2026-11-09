@@ -84,6 +84,34 @@ modes are run; weights and thresholds are unchanged.
 - **H8, v2 acts earlier.** Over stopped attacks, the mean hours before the target payment run are at least 5 hours more
   with `learning2` than with `shared`.
 
+## Round 3: learning carried over four periods (written 2026-11-09, ~06:00 CET, before the chained runs existed)
+Rounds 1 and 2 ran every six-week period with an empty memory. Learning v2 nearly paid for itself there (H6 failed by
+0.05 frictions per period). A company keeps its collective memory from one period to the next, so round 3 measures
+learning with experience.
+
+**Design.** Ten chains of four consecutive six-week periods. Within a chain, each period is a new world (a new seed:
+new vendors, events and cases) and only the collective memory is carried to the next period: the promoted attack
+patterns and, in `learning2`, the promoted legitimate look-alikes. Signals, open cases and decisions stay behind.
+Agents, rules, weights and thresholds are unchanged. All four modes are run (in `siloed` and `shared` nothing is
+promoted, so their periods are independent).
+
+**Seeds.** Chain *k* (1-10) uses seeds 3*k*1-3*k*4, that is 301-304, 311-314, ..., 391-394, never run before. One
+development chain on seeds 1-4 (already seen) may be run to check the code, and nothing else before the confirmation
+run. The confirmation chains are run once.
+
+- **H9, v2's wrong freezes fall with experience.** Averaged over the ten chains, `learning2`'s wrong freezes in
+  period 4 are at most half of those in period 1.
+- **H10, with experience v2 pays for itself.** In period 4, `learning2`'s frictions (false-positive holds +
+  legitimate bank changes blocked + wrong freezes) are at most `shared`'s + 0.5 (H6's bound), averaged over chains.
+- **H11, never worse on attacks.** In every period of every chain, `learning2` stops at least as many attacks as
+  `shared`.
+- **E3 (exploratory, no threshold).** Per period and mode: attacks stopped early, mean hours before the target
+  payment run, patterns and look-alikes in collective memory, and `learning` (v1)'s wrong freezes.
+
+**Limit stated now.** The agents read collective memory with `memory_get_all(promoted=True)`, which Meko documents as
+a recent window of about 20 memories; the simulator keeps the same cap. Over four periods older patterns can fall out
+of view. That is part of the system as built, and it is measured as it is (E3 reports the counts).
+
 ## Known limits, stated now
 - The same author wrote the world and the agents, so the agents may "play at home". To push against that, every
   attack kind has variants that remove signals (a VPN in the vendor's own country, no failed logins, the clerk
