@@ -112,7 +112,29 @@ optional `prompt` and `verify`.
 This was a probe: the question asked about the callback phone, and the case file was written by hand. The demo now
 runs the same loop with its own question (account and device) and a case file written from the run's records
 (`docs/MEKO_USAGE.md`). On the simulator, thresholds are set so that the demo's questions get the bands real Meko gave
-these similar ones. On real Meko the demo's own loop has not completed yet (next section).
+these similar ones. On real Meko the demo's own loop went from low to mid (last section).
+
+## Clean pass on emptied datapacks, recorded (2026-11-09, 10:56-11:00 CET)
+With Alessandro's yes («Sí, vacíalos»), the memories of the four demo datapacks were deleted with `memory_delete_all`,
+agent by agent, after an inventory: 316 in `sentinel-signals`, 2 in `sentinel-patterns`, 14 in `sentinel-audit`, none in
+`sentinel-legit` (332 in all, every reply `complete: true`; a recount showed 0). Kept: the datapacks themselves (deleting
+one does not give the Free plan's slot back), the conversations (they do not affect memory searches), the knowledge
+files (the policy and the playbook) and two promoted patterns from earlier runs, which no tool or API endpoint deletes;
+the demo reads only its own run's patterns.
+
+Then one run of the whole story, recorded call by call (`scripts/record_run.py --real`, run `97e9e5fc`):
+
+| | Result |
+|---|---|
+| Outcome | The same as offline: siloed lane €85,250 to the attackers, Meko lane €0; Nordwind's bank change blocked Tue 16:40 (risk 19, 11 memories from three agents), Bergmann frozen Tue 09:05 by the promoted pattern |
+| Self-learning loop | The vendor-master agent's question was graded `low` (nothing found). After the case file was uploaded, `selflearning_verify` replayed it: **low → mid** (best match 0.65), `outcome: improved`; not high, as on the simulator |
+| Week 2 | The question about Bergmann's request (another account and device) pointed to the Nordwind case as a similar one (a new account in Lithuania too); graded mid |
+| Calls and time | 128 calls in about 3 minutes; `memory_search` median 1.8 s (max 18.1 s), `context_search` about 12 s, `selflearning_verify` 14.7 s |
+| Recording | 125 entries, 467 KB, no keys, no e-mail address other than the story's invented ones. Knowledge uploads return a storage key that starts with the account's id; only the file name is kept |
+
+`docs/TRACES.md` is generated from this recording (`scripts/trace_walkthroughs.py --replay`), and the demo offers it as
+"Replay of a recorded run". A change to the story that alters its calls breaks the replay; a test says so, and the run
+has to be recorded again on emptied datapacks.
 
 ## Consequences for the plan
 - A full six-week world on real Meko means hundreds of searches: minutes at best, hours at the first tests' latency,

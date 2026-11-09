@@ -10,7 +10,7 @@ from payee_sentinel.agents import Memory, Signal, pattern_match, risk_of
 from payee_sentinel.context.base import Hit
 from payee_sentinel.context.local import LocalMeko
 from payee_sentinel.context.meko import MekoClient, MekoError
-from payee_sentinel.context.replay import Recorder, Replayer, ReplayMismatch
+from payee_sentinel.context.replay import Recorder, Replayer, ReplayMismatch, latest_recording
 from payee_sentinel.evaluate import carry_learning, run, run_chain, summarize
 from payee_sentinel.scenario import generate, iban_is_valid
 from payee_sentinel.scenario import Event, make_iban
@@ -178,6 +178,21 @@ def test_a_recorded_run_replays_exactly_and_stops_when_it_goes_off_script(tmp_pa
     with pytest.raises(ReplayMismatch):
         for ch in CHAPTERS:                                         # no promotion this time: week 2 differs
             off.advance()
+
+
+def test_the_committed_real_meko_recording_still_replays():
+    """The public demo replays `recordings/`. If a change to the story alters its calls, this fails: record again."""
+    path = latest_recording()
+    if path is None:
+        pytest.skip("no real-Meko recording in recordings/")
+    replay = Replayer(path)
+    story = Story(lambda: replay, run_id=replay.run_id)
+    for ch in CHAPTERS:
+        story.advance()
+        if ch.key == "audit":
+            story.promote("V001")
+    assert replay.pos == len(replay.entries)
+    assert story.summary()["learning2"]["lost"] == 0 and story.summary()["siloed"]["lost"] == 85250
 
 
 def test_a_denied_callback_is_traced_as_a_rejection_without_an_older_search():

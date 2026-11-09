@@ -5,10 +5,10 @@ takeover is stopped before the money leaves. Built for ContextCon: Remember Ever
 Attacker").
 
 > **Status, 9 Nov 2026: work in progress.** The synthetic world, the agents, the measurement (three rounds) and a first
-> demo screen exist. The demo runs offline or on real Meko: on empty datapacks the whole story took 73 s with the same
-> outcome as offline, but once earlier runs fill the datapacks, their near-identical memories outrank a new run's and
-> the Meko lane misses its own signals (`docs/MEKO_SMOKE.md`). Still to come: Claude reading the emails, the video and
-> a public demo link.
+> demo screen exist. The demo runs offline, as a replay of a run recorded on real Meko, or live on real Meko. On empty
+> datapacks the real run reaches the same outcome as offline; once earlier runs fill the datapacks, their
+> near-identical memories outrank a new run's and the Meko lane misses its own signals (`docs/MEKO_SMOKE.md`). Still
+> to come: Claude reading the emails, the video and a public demo link.
 
 ## The idea
 A vendor takeover arrives in pieces: a password reset on the supplier portal from a new device, a changed contact
@@ -52,7 +52,9 @@ Without a `MEKO_API_KEY` everything runs on the offline simulator (`payee_sentin
 `.env` (see `.env.example`), `python scripts/meko_smoke.py` checks every Meko feature used here against the real service.
 `python scripts/record_run.py --real` records one run on real Meko, call by call, into `recordings/` (do it once, on
 empty datapacks); the demo then offers it as a replay, so a visitor sees what real Meko answered without a key and
-without spending the account's quota (`payee_sentinel/context/replay.py`). No real recording is in the repo yet.
+without spending the account's quota (`payee_sentinel/context/replay.py`). The repo holds one, recorded on 9 Nov 2026
+on emptied datapacks (`recordings/`): the same outcome as offline, and Meko's self-learning loop took the agents'
+weak question from low to mid. `docs/TRACES.md` is generated from that recording.
 
 ## How Meko is used
 Datapacks, per-agent conversations, decision traces for every decision (allow included, each with the query and the

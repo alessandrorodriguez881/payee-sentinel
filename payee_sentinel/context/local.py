@@ -26,7 +26,7 @@ from .base import Call, Hit, approx_tokens, now_iso
 FREE_DATAPACKS = 10
 BANDS = ("low", "mid", "high")
 HIGH, MID = 0.75, 0.2       # bands of the best score: the demo's questions get the bands real Meko gave similar
-                            # questions in a probe (docs/MEKO_SMOKE.md); the demo's own loop has not run on real Meko
+                            # questions in a probe (docs/MEKO_SMOKE.md); on real Meko the demo's own loop went low -> mid
 HINTS = {"high": "Strong match: answer from these results.",
          "mid": "Partial match: use these results, and tell the user what is missing.",   # Meko's own wording
          "low": "Little or nothing found: say so rather than guess."}

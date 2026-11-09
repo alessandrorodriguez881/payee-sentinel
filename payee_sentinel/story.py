@@ -613,8 +613,10 @@ class Story:
             return lines + [f"Nothing to replay: {reason}."]
         v = store.selflearning_verify(mem.patterns_dp, conv, row["id"])
         before, after = v.get("before") or {}, v.get("after") or {}
-        lines.append(f"Meko replays the question: **{before.get('band')} → {after.get('band')}** (best score "
-                     f"{before.get('best_score') or 0:.2f} → {after.get('best_score') or 0:.2f})")
+        score = {k: "none" if v.get("best_score") is None else f"{v['best_score']:.2f}"
+                 for k, v in (("before", before), ("after", after))}
+        lines.append(f"Meko replays the question: **{before.get('band')} → {after.get('band')}** (best match "
+                     f"{score['before']} → {score['after']})")
         lane.learning = dict(quality=q, before=before, after=after, outcome=v.get("outcome"))
         return lines
 

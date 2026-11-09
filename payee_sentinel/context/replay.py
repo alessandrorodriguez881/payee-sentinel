@@ -68,6 +68,8 @@ def _key(method: str, args: tuple, kwargs: dict) -> str:
 
 
 def _trim(method: str, result: Any) -> Any:
+    if method == "knowledge_upload" and isinstance(result, str):
+        return result.rsplit("/", 1)[-1]          # the storage key starts with the account's id: keep the file name
     keep = KEEP.get(method)
     if keep and isinstance(result, dict):
         return {k: v for k, v in result.items() if k in keep}
