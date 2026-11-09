@@ -23,8 +23,9 @@ PICKS = [  # (lane, vendor, outcome, why this one)
     ("siloed", "V001", "allow", "The siloed vendor-master agent lets the attacker's bank change through."),
     ("siloed", "V001", "allow", "The siloed payments agent pays the attacker."),
     ("learning2", "V001", "block", "With Meko, the same agent, with the same rule, blocks the change."),
-    ("learning2", "V002", "freeze", "Week 2: an approved pattern freezes Bergmann before anyone asks for a change."),
-    ("learning2", "V002", "block", "Week 2: the bank change is blocked, and Meko finds the earlier Nordwind case."),
+    ("learning2", "V002", "freeze", "Week 2: an approved pattern freezes Bergmann as soon as the bank-change email "
+                                    "arrives, two minutes before the change request reaches the vendor master."),
+    ("learning2", "V002", "block", "Week 2: the bank change is blocked, and Meko points to a similar earlier case."),
 ]
 
 
@@ -37,8 +38,8 @@ def walkthrough(n: int, lane_key: str, d: dict, why: str) -> list[str]:
            f"- **Reasoning saved with the decision:** {d['reasoning']}",
            f"- **Search behind it:** `{d['query']}` in `{d['datapack']}`, {_n(len(d['memory_ids']), 'memory').replace('memorys', 'memories')} found."]
     if d.get("related_case"):
-        out.append(f"- **Earlier case Meko found for the request:** {d['related_case']} (knowledge base, "
-                   f"`context_search`).")
+        out.append(f"- **Earlier case Meko pointed to for the request:** {d['related_case']} (knowledge base, "
+                   f"`context_search`; what it shares was checked in the case file's text).")
     if d["signals"]:
         out += ["", "| Seen | Written by | Signal | Weight | Detail | Memory id |", "|---|---|---|---|---|---|"]
         for s in sorted(d["signals"], key=lambda s: s.at):
@@ -85,14 +86,16 @@ def main() -> None:
     if meko.learning.get("after"):
         b, a = meko.learning["before"], meko.learning["after"]
         q = meko.asked["V001"]
+        later = meko.asked.get("V002", {})
         lines += [f"## {n + 1}. Meko's self-learning loop closes a gap", "",
                   f"On {q['at']:%A %H:%M} the vendor-master agent asked Meko (`context_search` in `sentinel-patterns`): "
                   f"\"{q['query']}\" Meko graded the match **{b['band']}**. After the analyst confirmed the attack, "
-                  f"the auditor agent read Meko's self-learning status, added the confirmed case file to the "
-                  f"knowledge base, and asked Meko to replay the question (`selflearning_verify`): **{b['band']} → "
-                  f"{a['band']}** (best score {b['best_score']:.2f} → {a['best_score']:.2f}). A week later the same "
-                  f"question about Bergmann's request found the Nordwind case "
-                  f"({meko.asked['V002']['related'] or 'not found'}).", ""]
+                  f"the auditor agent read Meko's self-learning status, found the question in Meko's search log, "
+                  f"added the confirmed case file to the knowledge base, and asked Meko to replay the question "
+                  f"(`selflearning_verify`): **{b['band']} → {a['band']}** (best score {b['best_score']:.2f} → "
+                  f"{a['best_score']:.2f}). A week later the same question about Bergmann's request, with another "
+                  f"account and device, " + (f"pointed to {later['related']} as a similar case: {later['link']}."
+                                             if later.get("related") else "found no related case."), ""]
     (ROOT / "docs" / "TRACES.md").write_text("\n".join(lines), encoding="utf-8")
     print(f"docs/TRACES.md: {n} walkthroughs" + (" + the self-learning loop" if meko.learning.get("after") else ""))
 

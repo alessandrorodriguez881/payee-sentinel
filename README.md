@@ -4,7 +4,7 @@ Accounts-payable agents that share what they see through [Meko](https://mekodata
 takeover is stopped before the money leaves. Built for ContextCon: Remember Everything (theme 03, "Remember the
 Attacker").
 
-> **Status, 9 Nov 2026: work in progress.** The synthetic world, the agents, the measurement (two rounds) and a first
+> **Status, 9 Nov 2026: work in progress.** The synthetic world, the agents, the measurement (three rounds) and a first
 > demo screen exist. The demo runs offline or on real Meko: on empty datapacks the whole story took 73 s with the same
 > outcome as offline, but once earlier runs fill the datapacks, their near-identical memories outrank a new run's and
 > the Meko lane misses its own signals (`docs/MEKO_SMOKE.md`). Still to come: Claude reading the emails, the video and
@@ -34,8 +34,9 @@ round 1, and it raised the analysts' workload. Version 2 also remembers the legi
 confirms: wrong freezes fall by more than half and it acts about 6 hours earlier, and it nearly pays for itself, but not
 quite over six weeks (6.15 frictions per period against 5.60). Round 3 carries the collective memory over four
 consecutive periods: by the fourth, v2's wrong freezes are down from 3.1 to 0.6 per period, it costs 6.0 frictions
-against 5.8 for shared memory alone, and it acts about two days earlier; v1 never improves. All three rounds, with
-their failed hypotheses and the scoring corrections made after an independent code review, are in `docs/RESULTS.md`.
+against 5.8 for shared memory alone, and it acts 41-51 hours earlier. v1 acts as early but never stops freezing
+legitimate vendors by mistake. All three rounds, with their failed hypotheses and the corrections made after
+independent reviews, are in `docs/RESULTS.md`.
 
 ## Run it
 ```bash

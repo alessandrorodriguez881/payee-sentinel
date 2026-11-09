@@ -109,8 +109,10 @@ optional `prompt` and `verify`.
 | `amp_core_budget` (read only) | Free tier, 0.5 vCPU cap, 0 used; `amp_cluster_list` empty |
 | The loop, in the smoke datapack | The vendor-master agent's question ("Has the bank account LT73… or the callback phone … appeared in an earlier confirmed fraud case?") was graded **mid** (0.69, `partial_match`, category `coverage`). After the confirmed case file was uploaded to the knowledge base (indexed in under 10 s), `selflearning_verify` replayed it: **mid → high (0.69 → 0.81)**, `outcome: improved`, top result the case file. The same question for Bergmann's request (another Lithuanian account and phone) put the Nordwind case first among knowledge results (rerank 0.97); Meko graded it mid (a partial match) |
 
-The demo now runs this loop (`docs/MEKO_USAGE.md`); the simulator grades its searches with thresholds set so the same
-searches get the same bands.
+This was a probe: the question asked about the callback phone, and the case file was written by hand. The demo now
+runs the same loop with its own question (account and device) and a case file written from the run's records
+(`docs/MEKO_USAGE.md`). On the simulator, thresholds are set so that the demo's questions get the bands real Meko gave
+these similar ones. On real Meko the demo's own loop has not completed yet (next section).
 
 ## Consequences for the plan
 - A full six-week world on real Meko means hundreds of searches: minutes at best, hours at the first tests' latency,

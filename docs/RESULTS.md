@@ -84,7 +84,10 @@ periods; each period is a new world, and only the promoted collective memory car
 | Attacks stopped, shared / learning2 (of 80) | 80 / 80 | 79 / 79 | 79 / 79 | 80 / 80 |
 | Stopped before a bank change, shared / learning2 | 71 / 71 | 73 / 73 | 71 / 72 | 72 / 72 |
 | Hours before the target run, shared / learning2 | 88.6 / 93.3 | 88.7 / 140.1 | 77.1 / 120.8 | 87.6 / 129.0 |
+| Hours before the target run, learning (v1) | 99.6 | 141.0 | 127.9 | 139.8 |
 | Collective memory, learning2: attack patterns / look-alikes | 7.8 / 8.8 | 14.2 / 10.9 | 18.6 / 12.0 | 21.9 / 12.8 |
+| Collective memory, learning (v1): attack patterns | 7.9 | 15.7 | 23.6 | 31.5 |
+| learning (v1): frictions per period | 8.40 | 8.80 | 8.40 | 8.10 |
 | Siloed agents: attacks stopped (of 80) | 39 | 43 | 39 | 40 |
 
 - **H9 holds.** v2's wrong freezes fall from 3.10 in period 1 to 0.60 in period 4 (the bar was half, 1.55). In
@@ -92,11 +95,17 @@ periods; each period is a new world, and only the promoted collective memory car
 - **H10 holds.** In period 4 v2's frictions are 6.00 against 5.80 with shared memory (the bar was 6.30); eight chains
   had the same frictions as shared memory and two had one more.
 - **H11 holds.** In no chain and no period did v2 stop fewer attacks than shared memory.
-- **E3 (exploratory).** From period 2 on, v2 acts 41-51 hours earlier than shared memory on the attacks it stops.
-  v1, which learns only from attacks, does not improve: its wrong freezes stay at 5.4-6.9 per period. By period 4 the
-  attack patterns (21.9 on average) exceed the 20-memory window that `memory_get_all` returns, so the oldest fall out of
-  view; that did not show in the numbers yet. Money lost with shared memory, v1 or v2: €10,167 in period 2 (one
-  attack, in all three), nothing in the others; in silos €1.2-1.9M per period.
+- **E3 (exploratory).**
+  - From period 2 on, both learning modes act earlier than shared memory on the attacks they stop: v2 by 41-51
+    hours, v1 by 50-52 hours. Both carry the approved attack patterns, which is where the earlier action comes from.
+  - v1, which learns only from attacks, never stops freezing legitimate vendors by mistake: 5.4-6.9 wrong freezes per
+    period, and 2.3-2.9 more frictions than shared memory in every period.
+  - The 20-memory window that `memory_get_all` returns: v1's attack patterns pass 20 from period 3 (23.6, then 31.5),
+    so its oldest patterns fall out of view. Re-run after the review without the cap, v1's wrong freezes in periods 3
+    and 4 would be 7.3 and 7.5 (reported 6.8 and 6.5) and its frictions 8.8 and 8.8; the window flatters v1. v2's
+    patterns reach 21.9 in period 4, and without the cap its numbers are identical.
+  - Money lost with shared memory, v1 or v2: €10,167 in period 2 (one attack, in all three), nothing in the others;
+    in silos €1.2-1.9M per period.
 
 ## What this means for the product
 - **Shared memory is the result to show.** In two independent sets of 20 periods it stops about twice as many attacks
@@ -106,8 +115,8 @@ periods; each period is a new world, and only the promoted collective memory car
 - **Learning from people works where it was aimed** (wrong freezes cut by more than half, about 6 hours earlier), and
   after the scoring fixes it nearly pays for itself (6.15 against 5.60 frictions), but not quite in six weeks.
 - **With experience it does** (round 3): after three periods its wrong freezes are down to 0.6, its cost is within 0.2
-  frictions of shared memory alone, and it acts about two days earlier. Learning only from attacks (v1) never gets
-  there.
+  frictions of shared memory alone, and it acts 41-51 hours earlier. Learning only from attacks (v1) acts as early but
+  keeps freezing legitimate vendors, so it never gets there.
 - The attacker that gets money out is the careful one in the vendor's real mailbox. No signal in this design catches it
   before the first payment; Verification of Payee at the bank, or reading the email's content more closely, would be
   the next things to try.
@@ -133,3 +142,13 @@ thresholds and the world generator were not changed by any correction.
 3. **2026-11-08, evening: simulator aligned with real Meko** (promoted memories leave `memory_search` and are read with
    `memory_get_all(promoted=True)`, `docs/MEKO_SMOKE.md`). Same decisions; learning's retrieval tokens went from 1,705
    to about 1,720 because reading the whole collective memory costs more.
+4. **2026-11-09, 05:26: round 3's write-up, after an independent review.** The review re-ran rounds 2 and 3 and found
+   every number in the round 3 table correct, and H9-H11 evaluated as registered. Two claims were wrong and are
+   corrected above:
+   - "The 20-memory window did not show in the numbers yet" held for v2 only. It does change v1's wrong freezes in
+     periods 3 and 4.
+   - "v1 never improves" was too broad: v1 acts earlier too (by 50-52 hours, more than v2). What it never does is stop
+     freezing legitimate vendors.
+   - "About two days earlier" became "41-51 hours".
+   - The pre-registration's seed formula ("chain *k* (1-10) uses seeds 3*k*1-3*k*4") does not give the seeds it lists.
+     The listed seeds, 301-304 to 391-394, are the ones that ran; `docs/HYPOTHESES.md` says so in a note.

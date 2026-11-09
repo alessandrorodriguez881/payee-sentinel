@@ -25,7 +25,8 @@ from .base import Call, Hit, approx_tokens, now_iso
 
 FREE_DATAPACKS = 10
 BANDS = ("low", "mid", "high")
-HIGH, MID = 0.75, 0.2       # bands of the best score; set so the demo's searches get the bands real Meko gave them
+HIGH, MID = 0.75, 0.2       # bands of the best score: the demo's questions get the bands real Meko gave similar
+                            # questions in a probe (docs/MEKO_SMOKE.md); the demo's own loop has not run on real Meko
 HINTS = {"high": "Strong match: answer from these results.",
          "mid": "Partial match: use these results, and tell the user what is missing.",   # Meko's own wording
          "low": "Little or nothing found: say so rather than guess."}
@@ -177,10 +178,11 @@ class LocalMeko:
                   f"{len(rows) - len(weak)} of {len(rows)} searches strong", t0)
         return out
 
-    def search_log(self, datapack_id, conversation_id, query) -> dict | None:
+    def search_log(self, datapack_id, conversation_id, query, since=None) -> dict | None:
+        """The newest logged search with exactly this query, made at `since` or later (an ISO time)."""
         t0 = time.perf_counter()
-        row = next((r for r in reversed(self.searches) if r["datapack"] == datapack_id and r["query"] == query),
-                   None)
+        row = next((r for r in reversed(self.searches) if r["datapack"] == datapack_id and r["query"] == query
+                    and (since is None or r["at"] >= since)), None)
         self._log("auditor", "selflearning_query_log", datapack_id, conversation_id, query, t0)
         return row
 

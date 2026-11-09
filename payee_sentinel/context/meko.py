@@ -20,6 +20,7 @@ Checked against the real service on 2026-11-08 (`scripts/meko_smoke.py`, `docs/M
 from __future__ import annotations
 
 import base64
+from datetime import datetime, timedelta
 import hashlib
 import itertools
 import json
@@ -275,13 +276,17 @@ class MekoClient:
                                                                   conversation_id=conversation_id, last="1d"),
                           "self-learning status")
 
-    def search_log(self, datapack_id, conversation_id, query) -> dict | None:
-        """The newest logged search with exactly this query (Meko writes the log in the background)."""
+    def search_log(self, datapack_id, conversation_id, query, since=None) -> dict | None:
+        """The newest logged search with exactly this query, made at `since` or later (an ISO time, with two minutes
+        of slack for clock differences), so that an earlier run's identical question is not picked. Meko writes the
+        log in the background, so this tries a few times."""
+        floor = datetime.fromisoformat(since) - timedelta(minutes=2) if since else None
         for _ in range(4):
             out = self._tool("auditor", "selflearning_query_log", dict(datapack_id=datapack_id,
                                                                         conversation_id=conversation_id, band="all",
                                                                         last="1d"), "search log")
-            row = next((r for r in out.get("rows", []) if r.get("query") == query), None) \
+            row = next((r for r in out.get("rows", []) if r.get("query") == query and (
+                floor is None or datetime.fromisoformat(str(r.get("searched_at"))) >= floor)), None) \
                 if isinstance(out, dict) else None
             if row:
                 return row

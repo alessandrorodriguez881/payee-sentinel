@@ -242,8 +242,12 @@ with results_tab:
     rows3 = {"Wrong freezes, learning v2": ["3.10", "0.80", "0.40", "0.60"],
              "Frictions, learning v2": ["6.60", "6.10", "5.70", "6.00"],
              "Frictions, shared memory alone": ["5.70", "5.90", "5.60", "5.80"],
-             "Hours earlier than shared memory": ["4.7", "51.4", "43.7", "41.4"],
-             "Wrong freezes, learning v1 (attacks only)": ["5.40", "6.90", "6.80", "6.50"]}
+             "Hours earlier than shared memory, learning v2": ["4.7", "51.4", "43.7", "41.4"],
+             "Hours earlier than shared memory, learning v1 (attacks only)": ["11.0", "52.3", "50.8", "52.2"],
+             "Wrong freezes, learning v1": ["5.40", "6.90", "6.80", "6.50"],
+             "Frictions, learning v1": ["8.40", "8.80", "8.40", "8.10"]}
     st.table([{"": name, **dict(zip(periods, values))} for name, values in rows3.items()])
-    st.caption("All three hypotheses of round 3 held. Every hypothesis, the ones that failed, and the scoring "
-               "corrections made after an independent code review are in docs/RESULTS.md.")
+    st.caption("All three hypotheses of round 3 held. Both learning versions act earlier because they carry the attack "
+               "patterns; only v2, which also learns the legitimate look-alikes, stops freezing vendors by mistake. "
+               "Every hypothesis, the ones that failed, and the corrections made after independent reviews are in "
+               "docs/RESULTS.md.")

@@ -112,6 +112,10 @@ run. The confirmation chains are run once.
 a recent window of about 20 memories; the simulator keeps the same cap. Over four periods older patterns can fall out
 of view. That is part of the system as built, and it is measured as it is (E3 reports the counts).
 
+*Note added on 2026-11-09 at 05:26, after the run, the text above left as registered:* the seed formula "chain *k*
+(1-10) uses seeds 3*k*1-3*k*4" does not give the seeds it lists. The listed seeds, 301-304, 311-314, ..., 391-394
+(chain *k* = 0-9 uses 300 + 10*k* + 1 to 300 + 10*k* + 4), are the ones that ran.
+
 ## Known limits, stated now
 - The same author wrote the world and the agents, so the agents may "play at home". To push against that, every
   attack kind has variants that remove signals (a VPN in the vendor's own country, no failed logins, the clerk

@@ -16,16 +16,20 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 import random
+import re
 import uuid
 
 from .agents import (BLOCK_BANK_CHANGE_AT, HOLD_AT, STEP_UP_AT, Action, InboxAgent, Memory, PaymentAgent,
                      PortalAgent, Signal, SupportAgent, VendorMasterAgent, observable, risk_of)
+from .context.base import now_iso
 from .context.local import LocalMeko
 from .scenario import Event, Vendor, make_iban
 
 LANES = {"siloed": "Agents in silos (today)", "learning2": "Agents sharing memory in Meko"}
 KNOWLEDGE = Path(__file__).resolve().parent / "knowledge"
 CASE_TITLE = "Confirmed fraud case:"
+CASE_NAME = re.compile(re.escape(CASE_TITLE) + r"\s*(.+?) \((V\d{3})\)")      # vendor name and id of a case file
+CASE_ACCOUNT = re.compile(r"Bank account in the request: ([A-Z]{2}\d{2}[A-Z0-9]+)")
 COUNTRIES = {"DE": "Germany", "FR": "France", "IT": "Italy", "LT": "Lithuania", "NG": "Nigeria", "NL": "Netherlands",
              "RU": "Russia"}
 BUYER = "Hallberg Components GmbH"
@@ -209,20 +213,31 @@ class Lane:
 
     # ---------- helpers ----------
     def _decision(self, agent: str, vendor_id: str, at: datetime, what: str, risk: int, reasons: list[str],
-                  rule: str, outcome: str) -> None:
-        """Write every decision to Meko (allow, step-up, hold, block or freeze) as a conversation turn with its
+                  rule: str, outcome: str, since: int) -> None:
+        """Write every decision to Meko (allow, step-up, hold, block, reject or freeze) as a conversation turn with its
         reasoning, its plan and the search behind it: the query and the ids of the memories it found (Meko shows the
-        turn as a decision trace). The same decision goes into `sentinel-audit` for the auditor agent to find."""
-        reads = [sigs for who, vid, sigs in self.mem.reads if who == agent and vid == vendor_id]
+        turn as a decision trace). The same decision goes into `sentinel-audit` for the auditor agent to find.
+        Only the agent's own search during this event counts (`since` indexes `Memory.reads`), and the reasoning
+        says how the risk was reached when it is more than the weights of those memories."""
+        reads = [sigs for who, vid, sigs in self.mem.reads[since:] if who == agent and vid == vendor_id]
         seen = reads[-1] if reads else []
-        by_agent = sorted({s.agent for s in seen})
-        reasoning = (f"Risk {risk} from {_n(len(set(s.type for s in seen)), 'signal type')} written by "
-                     f"{', '.join(AGENT_NAMES.get(a, a) for a in by_agent) or 'no agent'}; {rule}.")
+        found, _ = risk_of(seen)
+        risk = risk or found                        # a block on a frozen vendor carries no risk of its own
+        if not seen:
+            basis = f"No memory search for this decision; risk {risk} from its own check ({', '.join(reasons)})"
+        else:
+            basis = (f"Risk {found} from {_n(len(set(s.type for s in seen)), 'signal type')} written by "
+                     f"{', '.join(AGENT_NAMES.get(a, a) for a in sorted({s.agent for s in seen}))}")
+            if risk > found:
+                extra = [t for t in reasons if t not in {s.type for s in seen}]
+                basis += (f", plus {risk - found} for matching an approved attack pattern" if extra == ["pattern.match"]
+                          else f", plus {risk - found} from {', '.join(extra)}")
+        reasoning = f"{basis}; {rule}."
         trace = dict(outcome=outcome, risk=risk, rule=rule, query=self.mem.query(vendor_id),
                      datapack="sentinel-signals", memory_ids=[s.memory_id for s in seen if s.memory_id],
                      signal_types=sorted({s.type for s in seen}))
         if agent == "vendor_master" and self.asked.get(vendor_id, {}).get("related"):
-            trace["related_case"] = self.asked[vendor_id]["related"]
+            trace["related_case"] = f"{self.asked[vendor_id]['related']} ({self.asked[vendor_id]['link']})"
         conv = self.mem.conversation(agent)
         self.store.add_message(self.mem.signals_dp, conv, agent, f"{VENDORS[vendor_id].name}: {what}", what,
                                reasoning=reasoning, plan=[f"search Meko for {vendor_id}'s signals",
@@ -251,26 +266,49 @@ class Lane:
         return (f"Has the bank account {iban} ({COUNTRIES.get(iban[:2], iban[:2])}) or the device {e.data['device']} "
                 f"appeared in an earlier confirmed fraud case? Bank-change request for {VENDORS[e.vendor_id].name}.")
 
+    @staticmethod
+    def _link(case_text: str, iban: str, device: str) -> tuple[int, str] | None:
+        """What an earlier case file shares with a request, checked in the case's own text: the same account (3), the
+        same device (2), or a new account in the same country (1). None when it shares none of them."""
+        if iban in case_text:
+            return 3, "the same bank account"
+        if device in case_text:
+            return 2, "the same device"
+        m = CASE_ACCOUNT.search(case_text)
+        if m and m[1][:2] == iban[:2]:
+            return 1, f"a new account in {COUNTRIES.get(iban[:2], iban[:2])} too"
+        return None
+
     def _ask_about_request(self, e: Event) -> str:
         """The vendor-master agent asks Meko in plain words, across memory, knowledge base and past conversations
         (`context_search` in `sentinel-patterns`), whether the new account or device belongs to an earlier confirmed
-        case. Meko grades every such search, and the weak ones feed its self-learning loop. The answer goes into the
-        decision's trace; the decision itself stays with the rules."""
-        q = self.case_question(e)
+        case. Meko grades every such search, and the weak ones feed its self-learning loop. A case file counts only
+        for what it shares with this request, checked in its text. The answer goes into the decision's trace; the
+        decision itself stays with the rules."""
+        q, iban, device = self.case_question(e), e.data["new_iban"], e.data["device"]
+        asked_at = now_iso()
         found = self.store.context_search(self.mem.patterns_dp, self.mem.conversation("vendor_master"),
                                           "vendor_master", q, limit=5)
         quality = self.store.last_search.get("quality") or "not graded"
-        case = next((h for h in found["knowledge_base"] if CASE_TITLE in h.text), None)
-        related = next((v.name for v in VENDORS.values() if case and v.name in case.text), None)
-        self.asked[e.vendor_id] = dict(query=q, quality=quality, related=related, at=e.ts)
-        if related == VENDORS[e.vendor_id].name:       # only on real Meko, after an earlier demo run's audit
-            return (f"Asked Meko whether this account or device appeared in an earlier case: **this vendor's case is "
-                    f"already in Meko** from an earlier demo run on the same datapacks (match {quality})")
-        if related:
-            return (f"Asked Meko whether this account or device appeared in an earlier case: **confirmed case found, "
-                    f"{related}** (Meko rates the match {quality})")
-        return (f"Asked Meko whether this account or device appeared in an earlier case: nothing specific (Meko rates "
-                f"the match {quality} and keeps the search for its self-learning loop)")
+        best = None                                          # (strength, link, vendor id, vendor name)
+        for h in found["knowledge_base"]:
+            title = CASE_NAME.search(h.text)
+            link = self._link(h.text, iban, device) if title else None
+            if link and (best is None or link[0] > best[0]):
+                best = (link[0], link[1], title[2], title[1])
+        self.asked[e.vendor_id] = dict(query=q, quality=quality, related=best[3] if best else None,
+                                       link=best[1] if best else None, at=e.ts, asked_at=asked_at)
+        ask = "Asked Meko whether this account or device appeared in an earlier case:"
+        if best and best[2] == e.vendor_id:                  # only on real Meko, after an earlier demo run's audit
+            return (f"{ask} **this vendor's case is already in Meko** from an earlier demo run on the same "
+                    f"datapacks (match {quality})")
+        if best and best[0] >= 2:
+            return f"{ask} **{best[1]} appears in a confirmed case, {best[3]}** (Meko rates the match {quality})"
+        if best:
+            return (f"{ask} not this account or device, but **a similar confirmed case: {best[3]}**, with {best[1]} "
+                    f"(Meko rates the match {quality})")
+        return (f"{ask} nothing specific (Meko rates the match {quality} and keeps the search for its self-learning "
+                f"loop)")
 
     # ---------- chapters ----------
     def run_events(self, chapter: Chapter) -> Outcome:
@@ -309,14 +347,20 @@ class Lane:
                 step.lines.append(f"**Matches an attack pattern a person approved: bank details frozen** "
                                   f"(risk {f.risk})")
                 self._decision(f.agent, f.vendor_id, f.at, "bank details frozen by an approved pattern", f.risk,
-                               f.reasons, "freeze when the vendor matches an approved attack pattern", "freeze")
+                               f.reasons, "freeze when the vendor matches an approved attack pattern", "freeze", r0)
             for act in self.vm.actions[a0:]:
                 step.tone = "good"
+                if act.kind == "reject_bank_change":
+                    step.lines.append("**Bank change rejected** — the vendor denied asking for it when called back")
+                    self._decision("vendor_master", act.vendor_id, act.at, "bank change rejected", act.risk,
+                                   act.reasons, "reject a change the vendor denies on the phone number on file",
+                                   "reject", r0)
+                    continue
                 step.lines.append(f"**Bank change blocked** — risk {act.risk} ≥ {BLOCK_BANK_CHANGE_AT}"
                                   if act.risk else "**Bank change blocked** — the vendor's bank details are frozen")
                 self._decision("vendor_master", act.vendor_id, act.at, "bank change blocked", act.risk, act.reasons,
                                f"block a confirmed bank change at risk {BLOCK_BANK_CHANGE_AT} or more" if act.risk
-                               else "block every bank change while the vendor's bank details are frozen", "block")
+                               else "block every bank change while the vendor's bank details are frozen", "block", r0)
             applied = self.vm.applied.get(e.vendor_id)
             if e.kind == "callback" and applied and applied[1] == e.ts:
                 self.current[e.vendor_id], self.changed_at[e.vendor_id] = applied
@@ -325,7 +369,7 @@ class Lane:
                 step.lines.append(f"Callback confirmed, risk {risk} < {BLOCK_BANK_CHANGE_AT}: "
                                   f"**new bank details applied** ({_iban(applied[0])})")
                 self._decision("vendor_master", e.vendor_id, e.ts, "bank change applied", risk, reasons,
-                               f"apply a confirmed bank change below risk {BLOCK_BANK_CHANGE_AT}", "allow")
+                               f"apply a confirmed bank change below risk {BLOCK_BANK_CHANGE_AT}", "allow", r0)
             if step.lines or e.kind in ("callback", "bank_change_request"):
                 steps.append(step)
         if chapter.review_after:
@@ -374,13 +418,15 @@ class Lane:
         for inv in INVOICES[chapter.key]:
             v = VENDORS[inv.vendor_id]
             iban = self.current[v.id]
+            r0 = len(self.mem.reads)
             act = self.pay.decide(run, v, inv, iban, self.changed_at[v.id], self.paid_ibans)
             amount = inv.data["amount"]
             to_attacker = iban in ATTACKER_IBANS
             if act is None:
                 risk, reasons = self.pay.last_risk
                 self._decision("payments", v.id, run, f"payment of {_money(amount)} released", risk, reasons,
-                               f"release below risk {HOLD_AT}, and below {STEP_UP_AT} after a bank change", "allow")
+                               f"release below risk {HOLD_AT}, and below {STEP_UP_AT} after a bank change", "allow",
+                               r0)
                 self.paid_ibans.add(iban)
                 self.payments.append(dict(run=chapter.key, vendor=v.name, invoice=inv.data["invoice_no"],
                                           amount=amount, iban=iban, to_attacker=to_attacker, decision="paid"))
@@ -395,7 +441,7 @@ class Lane:
                         f"call the number on file 60 days ago before paying, at risk {STEP_UP_AT} or more after a "
                         f"bank change")
                 self._decision("payments", v.id, run, f"payment {act.kind.replace('_', '-')}", act.risk,
-                               act.reasons, rule, act.kind)
+                               act.reasons, rule, act.kind, r0)
                 self.payments.append(dict(run=chapter.key, vendor=v.name, invoice=inv.data["invoice_no"],
                                           amount=amount, iban=iban, to_attacker=False, decision=act.kind))
                 step.tone = "good" if to_attacker else "warn"
@@ -535,10 +581,10 @@ class Story:
         return f"Case report saved in Meko as an artifact (sha256 {digest[:12]}…)"
 
     def self_learning(self, lane: Lane, vendor_id: str) -> list[str]:
-        """Meko's self-learning loop, run by the auditor agent once a case is confirmed. Meko grades every
-        `context_search` and lists the weak ones (`selflearning_status`); the auditor adds what was missing, the
-        confirmed case file, to the knowledge base; Meko then replays the weak search (`selflearning_verify`) to check
-        the fix. The next request from the same crew finds the case."""
+        """Meko's self-learning loop, run by the auditor agent once a case is confirmed. Meko grades and logs every
+        `context_search` (`selflearning_status` gives the counts); the auditor finds the vendor-master agent's question
+        about this case in Meko's search log, adds what was missing (the confirmed case file) to the knowledge base,
+        and asks Meko to replay the question (`selflearning_verify`) to check the fix."""
         if vendor_id not in lane.confirmed:
             return []
         mem, store = lane.mem, lane.store
@@ -549,18 +595,22 @@ class Story:
         lines = [f"Meko's self-learning check of `sentinel-patterns`: {q.get('high') or 0} of {n} "
                  f"{'search' if n == 1 else 'searches'} today found a strong match"]
         asked = lane.asked.get(vendor_id)
-        row = store.search_log(mem.patterns_dp, conv, asked["query"]) if asked else None
+        row = store.search_log(mem.patterns_dp, conv, asked["query"], since=asked["asked_at"]) if asked else None
+        band = (row or {}).get("band") or (asked or {}).get("quality")
         if asked:
-            lines.append(f"Weak search: the vendor-master agent's question on {asked['at']:%A %H:%M}, "
-                         f"\"{asked['query']}\" (match {(row or {}).get('band') or asked['quality']})")
+            lines.append(f"{'Strong' if band == 'high' else 'Weak'} search: the vendor-master agent's question on "
+                         f"{asked['at']:%A %H:%M}, \"{asked['query']}\" (match {band})")
         key = store.knowledge_upload(mem.patterns_dp, f"case-{vendor_id}-{mem.run_id}.md",
                                      self._case_file(lane, vendor_id).encode("utf-8"), conversation_id=conv)
         store.knowledge_ready(mem.patterns_dp, key, conv)
         lines.append("The auditor agent adds what was missing to Meko's knowledge base: the confirmed case file, with "
                      "the account, the device and the order of the attacker's steps")
-        if not row or row.get("band") == "high":
+        if not asked or row is None or band == "high":
             lane.learning = dict(quality=q)
-            return lines + ["Nothing to replay: Meko's log shows no weak search about this case."]
+            reason = ("no question about this case was asked" if not asked else
+                      "Meko's search log does not list the question yet" if row is None else
+                      "the question already found a strong match")
+            return lines + [f"Nothing to replay: {reason}."]
         v = store.selflearning_verify(mem.patterns_dp, conv, row["id"])
         before, after = v.get("before") or {}, v.get("after") or {}
         lines.append(f"Meko replays the question: **{before.get('band')} → {after.get('band')}** (best score "

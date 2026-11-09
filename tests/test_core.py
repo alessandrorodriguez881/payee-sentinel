@@ -1,6 +1,7 @@
 """Checks that need no network: the world, the Meko simulator's rules, the memory modes and the real client's parsing."""
 from datetime import datetime, timedelta
 import json
+import random
 
 import httpx
 import pytest
@@ -11,7 +12,8 @@ from payee_sentinel.context.local import LocalMeko
 from payee_sentinel.context.meko import MekoClient, MekoError
 from payee_sentinel.evaluate import carry_learning, run, run_chain, summarize
 from payee_sentinel.scenario import generate, iban_is_valid
-from payee_sentinel.story import CHAPTERS, INVOICES, Story
+from payee_sentinel.scenario import Event, make_iban
+from payee_sentinel.story import CHAPTERS, INVOICES, VENDORS, Chapter, Lane, Story
 
 
 @pytest.fixture(scope="module")
@@ -129,15 +131,41 @@ def test_every_decision_is_traced_with_the_memories_behind_it(story):
     assert block["query"] == meko.mem.query("V001")
 
 
-def test_self_learning_loop_fixes_the_weak_search_and_week_two_finds_the_case(story):
+def test_self_learning_loop_fixes_the_weak_search_and_week_two_finds_a_similar_case(story):
     meko = story.lanes["learning2"]
     assert meko.asked["V001"]["related"] is None                # week 1: no earlier case to find
     assert meko.learning["before"]["band"] != "high" and meko.learning["after"]["band"] == "high"
     assert meko.learning["outcome"] == "improved"
-    assert meko.asked["V002"]["related"] == "Nordwind Logistik GmbH"
+    # week 2: another account and device, so only a similar case (a new account in the same country)
+    assert (meko.asked["V002"]["related"], meko.asked["V002"]["link"]) == ("Nordwind Logistik GmbH",
+                                                                          "a new account in Lithuania too")
     block = next(d for d in meko.log if d["vendor_id"] == "V002" and d["outcome"] == "block")
-    assert block["related_case"] == "Nordwind Logistik GmbH"
+    assert block["related_case"] == "Nordwind Logistik GmbH (a new account in Lithuania too)"
+    assert block["risk"] == sum(s.weight for s in {s.type: s for s in block["signals"]}.values())  # no placeholder 0
     assert "siloed" not in [m for m, lane in story.lanes.items() if lane.asked]   # silos have no case history
+    # a request that shares nothing with the case (a German account, a device never seen) gets no case at all
+    other = Event("X-B1", datetime(2026, 11, 25, 10), "vendor_master", "bank_change_request", "V005",
+                  dict(via="portal", new_iban=make_iban(random.Random(1), "DE"),
+                       holder=VENDORS["V005"].name, device="dev-000000", country="FR"))
+    assert "nothing specific" in meko._ask_about_request(other) and meko.asked["V005"]["related"] is None
+
+
+def test_a_denied_callback_is_traced_as_a_rejection_without_an_older_search():
+    lane, t = Lane("learning2", LocalMeko(), "t"), datetime(2026, 11, 18, 10)
+    v = VENDORS["V003"]
+
+    def change(tag, at, result):
+        return [Event(f"{tag}1", at, "vendor_master", "bank_change_request", v.id,
+                      dict(via="portal", new_iban=make_iban(random.Random(tag), "NL"), holder=v.name,
+                           device=v.devices[0], country=v.country)),
+                Event(f"{tag}2", at + timedelta(minutes=30), "vendor_master", "callback", v.id,
+                      dict(phone=v.phone, phone_source="master", result=result))]
+
+    lane.run_events(Chapter("a", t, "", "", events=change("A", t, "confirmed")))      # searches memory, applies
+    lane.run_events(Chapter("b", t, "", "", events=change("B", t + timedelta(days=2), "denied")))
+    d = lane.log[-1]
+    assert (d["outcome"], d["what"], d["memory_ids"]) == ("reject", "bank change rejected", [])
+    assert d["reasoning"].startswith("No memory search for this decision; risk 6")
 
 
 def _sse(rid, result):
