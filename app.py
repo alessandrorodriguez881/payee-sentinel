@@ -235,5 +235,15 @@ with results_tab:
     st.table([{"": name, **dict(zip(cols, values))} for name, values in rows.items()])
     st.caption("Learning from people (version 2) cut wrong freezes by more than half and acted about 6 hours earlier, "
                "and it nearly pays for itself, but not quite over six weeks (6.15 frictions per period against "
-               "5.60). Every hypothesis, the ones that failed, and the scoring corrections made after an independent "
-               "code review are in docs/RESULTS.md.")
+               "5.60).")
+    st.markdown("**With experience (round 3):** ten chains of four six-week periods, each a new world, carrying only "
+                "Meko's collective memory from one period to the next.")
+    periods = ["Period 1", "Period 2", "Period 3", "Period 4"]
+    rows3 = {"Wrong freezes, learning v2": ["3.10", "0.80", "0.40", "0.60"],
+             "Frictions, learning v2": ["6.60", "6.10", "5.70", "6.00"],
+             "Frictions, shared memory alone": ["5.70", "5.90", "5.60", "5.80"],
+             "Hours earlier than shared memory": ["4.7", "51.4", "43.7", "41.4"],
+             "Wrong freezes, learning v1 (attacks only)": ["5.40", "6.90", "6.80", "6.50"]}
+    st.table([{"": name, **dict(zip(periods, values))} for name, values in rows3.items()])
+    st.caption("All three hypotheses of round 3 held. Every hypothesis, the ones that failed, and the scoring "
+               "corrections made after an independent code review are in docs/RESULTS.md.")

@@ -1,7 +1,8 @@
 # Results
 
-Two rounds, each run once on 20 synthetic six-week periods with the offline simulator of Meko
-(`python -m payee_sentinel.evaluate --seeds <seeds> --out runs/<file>.json`; `runs/` is not committed). Each period
+Three rounds, each run once with the offline simulator of Meko: rounds 1 and 2 on 20 synthetic six-week periods
+(`python -m payee_sentinel.evaluate --seeds <seeds> --out runs/<file>.json`; `runs/` is not committed), round 3 on ten
+chains of four periods that carry their collective memory over (`--chains 301-304,311-314,...`). Each period
 has 60 vendors, 8 planted attacks, 20 legitimate look-alike cases and about 155 payments. The hypotheses were written
 before each run (`docs/HYPOTHESES.md`). Two scoring defects were found afterwards and fixed; the tables below use the
 corrected scoring, and the old numbers are listed under [Corrections](#corrections).
@@ -67,14 +68,46 @@ Learning v2 also remembers the legitimate look-alikes the analyst confirms, and 
 - **Round 1 replicated on new seeds:** shared memory stops 158 attacks against 82 in silos (fewer in no seed), money
   lost falls from €3.17M to €7,274, and false-positive holds are 1.00 per period.
 
+## Round 3: learning carried over four periods, chains on seeds 301-394 (run on 2026-11-09, 05:00-05:02 CET)
+
+Hypotheses committed before the chained runs existed (`85521a4`, 04:58 CET; times corrected from an estimate in
+`c7c6657`), engine in `f32e8bf` (05:00), checked only on the development chain 1-4. Ten chains of four six-week
+periods; each period is a new world, and only the promoted collective memory carries over. Means over the ten chains
+(80 attacks per period across the chains):
+
+| Period | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|
+| **shared**: frictions per period | 5.70 | 5.90 | 5.60 | 5.80 |
+| **learning2**: frictions per period | 6.60 | 6.10 | 5.70 | **6.00** |
+| learning2: wrong freezes | **3.10** | 0.80 | 0.40 | **0.60** |
+| learning (v1): wrong freezes | 5.40 | 6.90 | 6.80 | 6.50 |
+| Attacks stopped, shared / learning2 (of 80) | 80 / 80 | 79 / 79 | 79 / 79 | 80 / 80 |
+| Stopped before a bank change, shared / learning2 | 71 / 71 | 73 / 73 | 71 / 72 | 72 / 72 |
+| Hours before the target run, shared / learning2 | 88.6 / 93.3 | 88.7 / 140.1 | 77.1 / 120.8 | 87.6 / 129.0 |
+| Collective memory, learning2: attack patterns / look-alikes | 7.8 / 8.8 | 14.2 / 10.9 | 18.6 / 12.0 | 21.9 / 12.8 |
+| Siloed agents: attacks stopped (of 80) | 39 | 43 | 39 | 40 |
+
+- **H9 holds.** v2's wrong freezes fall from 3.10 in period 1 to 0.60 in period 4 (the bar was half, 1.55). In
+  period 4, seven of the ten chains had none.
+- **H10 holds.** In period 4 v2's frictions are 6.00 against 5.80 with shared memory (the bar was 6.30); eight chains
+  had the same frictions as shared memory and two had one more.
+- **H11 holds.** In no chain and no period did v2 stop fewer attacks than shared memory.
+- **E3 (exploratory).** From period 2 on, v2 acts 41-51 hours earlier than shared memory on the attacks it stops.
+  v1, which learns only from attacks, does not improve: its wrong freezes stay at 5.4-6.9 per period. By period 4 the
+  attack patterns (21.9 on average) exceed the 20-memory window that `memory_get_all` returns, so the oldest fall out of
+  view; that did not show in the numbers yet. Money lost with shared memory, v1 or v2: €10,167 in period 2 (one
+  attack, in all three), nothing in the others; in silos €1.2-1.9M per period.
+
 ## What this means for the product
 - **Shared memory is the result to show.** In two independent sets of 20 periods it stops about twice as many attacks
   as siloed agents (156-158 against 81-82) and cuts the money lost from €2.27M to €0.13M (round 1) and from €3.17M to
   €7,274 (round 2), at a cost of about one false hold, four step-up calls and four or five bank-change calls per six
   weeks with 60 vendors.
 - **Learning from people works where it was aimed** (wrong freezes cut by more than half, about 6 hours earlier), and
-  after the scoring fixes it nearly pays for itself (6.15 against 5.60 frictions), but not quite in six weeks. A longer
-  horizon, where the look-alikes it learns come back, is the next thing to test — pre-registered, not assumed.
+  after the scoring fixes it nearly pays for itself (6.15 against 5.60 frictions), but not quite in six weeks.
+- **With experience it does** (round 3): after three periods its wrong freezes are down to 0.6, its cost is within 0.2
+  frictions of shared memory alone, and it acts about two days earlier. Learning only from attacks (v1) never gets
+  there.
 - The attacker that gets money out is the careful one in the vendor's real mailbox. No signal in this design catches it
   before the first payment; Verification of Payee at the bank, or reading the email's content more closely, would be
   the next things to try.

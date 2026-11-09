@@ -32,8 +32,10 @@ in silos, and €7,274 lost against €3.17M.
 The learning loop (approved attack patterns promoted to collective memory) did **not** improve on shared memory in
 round 1, and it raised the analysts' workload. Version 2 also remembers the legitimate look-alikes the analyst
 confirms: wrong freezes fall by more than half and it acts about 6 hours earlier, and it nearly pays for itself, but not
-quite over six weeks (6.15 frictions per period against 5.60). Both rounds, with their failed hypotheses and the
-scoring corrections made after an independent code review, are in `docs/RESULTS.md`.
+quite over six weeks (6.15 frictions per period against 5.60). Round 3 carries the collective memory over four
+consecutive periods: by the fourth, v2's wrong freezes are down from 3.1 to 0.6 per period, it costs 6.0 frictions
+against 5.8 for shared memory alone, and it acts about two days earlier; v1 never improves. All three rounds, with
+their failed hypotheses and the scoring corrections made after an independent code review, are in `docs/RESULTS.md`.
 
 ## Run it
 ```bash
