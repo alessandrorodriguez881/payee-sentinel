@@ -33,6 +33,27 @@ some replies include (account name and e-mail) are left out here.
 
 Search latency varies a lot from one hour to the next; both measurements are reported.
 
+## Ten rehearsals in a row on real Meko (2026-11-09, 00:48-01:12 CET)
+The same story run ten times in a row, each run writing into the same datapacks (as rehearsals before a recording would).
+
+| Run | Meko lane | Search latency (median) |
+|---|---|---|
+| 1 | Same as offline: €0 lost, Nordwind blocked Tue 16:40, Bergmann frozen Tue 09:05; the vendor-master agent found 10-11 of the run's own signals | 1.8 s |
+| 2-10 | **Found none of the run's own signals** and lost €85,250, like the siloed lane | 1.7-11.8 s (mostly about 11 s) |
+
+What three more probes showed:
+- `memory_add` always answered `ADD`, also for an identical text: Meko does not drop near-duplicates.
+- `memory_search` returned the 50 results asked for, spread over 11 runs, 4-5 from each. The run id in the text and the
+  query did not move a run's own memories up.
+- Three memories added with an exact, known text did not appear in an exact-text search minutes later, while older
+  memories with the same text came first (score 0.92). Our reading (not confirmed): after about 1,000 calls in 25
+  minutes, new memories were not being indexed in time. Search latency rose from about 2 s to about 11 s at the same time.
+- `memory_search` with `run_id` set returned nothing.
+
+So the real-Meko demo is reliable on a clean, quiet service (run 1), not yet under repeated rehearsals. Open: search
+for those three memories again later (late indexing or never indexed?), ask Meko about indexing delays, and decide with
+Alessandro whether to clear the demo datapacks before recording (that deletes data, so it is his call).
+
 ## Consequences for the plan
 - A full six-week world on real Meko means hundreds of searches: minutes at best, hours at the first tests' latency,
   and a dent in the Free plan's 10,000 retrievals a month. The large evaluation stays on the simulator; real Meko

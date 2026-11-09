@@ -60,8 +60,9 @@ with st.sidebar:
                         disabled=nxt is None, width="stretch", icon=":material/play_arrow:")
     restart = st.button("Start again", width="stretch", icon=":material/restart_alt:")
     real = st.toggle("Use real Meko", value=ss.real, disabled=not HAS_KEY,
-                     help="The whole story took 73 s on real Meko (searches: 1.7 s median, up to 16 s in earlier "
-                          "tests). Off: an offline simulator with the same rules.")
+                     help="On a clean service the whole story took 73 s on real Meko. In rehearsals run back to back, "
+                          "new memories were not searchable in time (docs/MEKO_SMOKE.md). Off: an offline simulator "
+                          "with the same rules.")
     st.caption((":material/cloud: Real Meko, mcp.mekodata.ai" if ss.real else
                 ":material/computer: Offline simulator of Meko") + " · all data is invented")
 

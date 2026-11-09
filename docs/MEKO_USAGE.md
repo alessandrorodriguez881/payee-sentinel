@@ -30,4 +30,6 @@ The live service and the offline simulator behave the same for everything above 
 - promoted memories leave `memory_search` and lose their metadata, so a pattern carries its signal types in its text;
 - explicit `memory_add` text is stored as written, while memories extracted from conversations are rewritten by an
   LLM — and one was rewritten wrongly — so signals are always written explicitly;
-- the whole demo story runs on real Meko in about a minute and reaches the same decisions as offline.
+- the whole demo story ran on real Meko in about a minute and reached the same decisions as offline — on a clean,
+  quiet service. In nine rehearsals in a row right after it, new memories did not show up in searches in time, and
+  the Meko lane lost like the siloed one. That is open (`docs/MEKO_SMOKE.md`).

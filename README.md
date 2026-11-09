@@ -5,8 +5,9 @@ takeover is stopped before the money leaves. Built for ContextCon: Remember Ever
 Attacker").
 
 > **Status, 9 Nov 2026: work in progress.** The synthetic world, the agents, the measurement (two rounds) and a first
-> demo screen exist. The demo runs offline or on real Meko: the whole story took 73 s on the live service with the same
-> outcome as offline (`docs/MEKO_SMOKE.md`). Still to come: Claude reading the emails, the video and a public demo link.
+> demo screen exist. The demo runs offline or on real Meko: on a clean service the whole story took 73 s with the same
+> outcome as offline, but in nine rehearsals in a row right after it, the Meko lane stopped finding its own new memories
+> (`docs/MEKO_SMOKE.md`). Still to come: Claude reading the emails, the video and a public demo link.
 
 ## The idea
 A vendor takeover arrives in pieces: a password reset on the supplier portal from a new device, a changed contact
