@@ -84,7 +84,7 @@ modes are run; weights and thresholds are unchanged.
 - **H8, v2 acts earlier.** Over stopped attacks, the mean hours before the target payment run are at least 5 hours more
   with `learning2` than with `shared`.
 
-## Round 3: learning carried over four periods (written 2026-11-09, ~06:00 CET, before the chained runs existed)
+## Round 3: learning carried over four periods (written 2026-11-09, ~04:58 CET, local commit `85521a4`, before the chained runs existed)
 Rounds 1 and 2 ran every six-week period with an empty memory. Learning v2 nearly paid for itself there (H6 failed by
 0.05 frictions per period). A company keeps its collective memory from one period to the next, so round 3 measures
 learning with experience.

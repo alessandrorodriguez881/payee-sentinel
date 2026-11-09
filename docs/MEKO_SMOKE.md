@@ -58,13 +58,13 @@ Checked again on 2026-11-09 at 04:28, three hours later, on a quiet service:
 - the three probe memories are **stored** (`memory_get_all` lists them, written at 01:14, among 280 memories in
   `sentinel-signals`) but still **not searchable**: an exact-text search with a limit of 50 returned older memories
   with the same text (score 0.92) and none of the three. Searches took 1.7-4.4 s;
-- two new memories written at 04:33 in the separate smoke datapack, one with a unique text and one with the probes'
+- two new memories written at 04:30 in the separate smoke datapack, one with a unique text and one with the probes'
   exact text, were both found by the first search, 17 s and 28 s after they were written (each search took 11.6 s).
 
 Our reading at that point: on a quiet service new memories become searchable within seconds; a few written under
 heavy load were stored but never indexed. The next pass corrected it.
 
-## One more pass on real Meko, and the cause (2026-11-09, 04:48-05:00 CET)
+## One more pass on real Meko, and the cause (2026-11-09, 04:48-04:53 CET)
 The demo story with the new decision traces and the self-learning loop, run once on the same datapacks (run
 `164ea90c`): it took 106 s and the Meko lane **lost €85,250 like the siloed one**. The vendor-master agent found none
 of the run's own signals (risk 0), so nothing was blocked, no case was confirmed and the self-learning loop had nothing
@@ -77,7 +77,7 @@ What three probes then showed, about ten minutes later:
   among 157;
 - **the score of a recent memory is about half its similarity**: in `sentinel-signals`, every copy of that signal
   (all written in the last six hours, the 01:14 probes included) had `score` 0.45 for `raw_similarity_score` 0.89;
-  in the smoke datapack the copy written at 04:33 had score 0.50 for similarity 1.00, while one written on 8-Nov at
+  in the smoke datapack the copy written at 04:30 had score 0.50 for similarity 1.00, while one written on 8-Nov at
   19:22 had score 0.91 for similarity 0.91.
 
 Our reading (not confirmed by Meko): a new memory is searchable at once, but only part of its hybrid score counts until
@@ -95,7 +95,7 @@ leave time between rehearsals, record with one clean pass, and decide with Aless
 datapacks before recording (that deletes data, so it is his call). For the product, it means an agent cannot assume
 that what another agent wrote a few seconds ago is already searchable.
 
-## Tools the live server lists, and Meko's self-learning loop (2026-11-09, 04:30-05:00 CET)
+## Tools the live server lists, and Meko's self-learning loop (2026-11-09, 04:30-04:45 CET)
 `tools/list` on the MCP server returns **57 tools**, against the 28 in the documentation read on 8-Nov. New to us:
 `selflearning_status`, `selflearning_shortfalls`, `selflearning_query_log`, `selflearning_verify`; `amp_*` (Postgres
 clusters, compute and branches inside a datapack); `project_*`. The input schemas also settled two details:
