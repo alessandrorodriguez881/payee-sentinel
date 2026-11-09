@@ -13,6 +13,7 @@ import streamlit as st
 from payee_sentinel.context import load_env
 from payee_sentinel.context.local import LocalMeko
 from payee_sentinel.context.replay import Replayer, ReplayMismatch, latest_recording
+from payee_sentinel.ledger import PgLedger, open_ledger
 from payee_sentinel.story import AGENT_NAMES, BUYER, CHAPTERS, LANES, RUNS, VENDORS, Story
 
 st.set_page_config(page_title="Payee Sentinel", page_icon=":material/shield_lock:", layout="wide")
@@ -29,13 +30,14 @@ ICON = {"good": ":material/verified_user:", "bad": ":material/money_off:", "warn
 
 
 def new_story(engine: str) -> Story:
+    """The ledger is Postgres in Meko when this machine can reach it (its details are in .env), else SQLite."""
     if engine == LIVE:
         from payee_sentinel.context.meko import MekoClient
-        return Story(MekoClient)
+        return Story(MekoClient, make_ledger=open_ledger)
     if engine == REPLAY:
         replay = Replayer(RECORDING)
-        return Story(lambda: replay, run_id=replay.run_id)
-    return Story(LocalMeko)
+        return Story(lambda: replay, run_id=replay.run_id, make_ledger=open_ledger)
+    return Story(LocalMeko, make_ledger=open_ledger)
 
 
 def money(x: float) -> str:
@@ -80,6 +82,8 @@ with st.sidebar:
                 f"{meko_lane.store.recorded_at[:10]}" if replaying else
                 ":material/cloud: Real Meko, mcp.mekodata.ai" if ss.engine == LIVE else
                 ":material/computer: Offline simulator of Meko") + " · all data is invented")
+    st.caption((":material/database: Ledger: Postgres in Meko (AMP)" if isinstance(story.ledger, PgLedger) else
+                ":material/database: Ledger: a local SQLite copy"))
 
 if engine != ss.engine or restart:
     ss.engine = engine
@@ -231,6 +235,22 @@ with meko_tab:
                                    weight=s.weight, detail=s.detail, memory=s.memory_id[:8])
                               for s in sorted(d["signals"], key=lambda s: s.at)],
                              hide_index=True, alt="The memories behind the decision")
+    st.markdown("**The ledger: Postgres inside the context**")
+    st.caption(f"{story.ledger.kind}. The vendor master with its history, the bank-change requests and the payments of "
+               f"the Meko lane; every record a decision made carries the id of that decision's trace in Meko.")
+    pick_table = st.segmented_control("Ledger table", ["Payments", "Bank-change requests", "Vendor master",
+                                                       "Changes on file", "SQL queries"], default="Payments",
+                                      label_visibility="collapsed")
+    if pick_table == "SQL queries":
+        st.dataframe([dict(sql=q.sql, rows=q.rows, ms=q.ms) for q in reversed(story.ledger.queries)], hide_index=True,
+                     alt="Every query the ledger ran")
+    elif pick_table:
+        name = {"Payments": "payments", "Bank-change requests": "bank_changes", "Vendor master": "vendors",
+                "Changes on file": "vendor_history"}[pick_table]
+        rows = story.ledger.table(name)
+        if name == "vendor_history":
+            rows = [r for r in rows if r["source"] != "onboarding"]
+        st.dataframe(rows, hide_index=True, alt=f"Ledger table {name}")
     st.markdown("**Every call to Meko**")
     st.caption("Newest first. Each decision is saved twice: as a conversation turn with its reasoning, and as a "
                "decision record the auditor agent searches when it explains a case."

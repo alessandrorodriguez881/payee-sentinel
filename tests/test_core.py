@@ -13,6 +13,7 @@ from payee_sentinel.context.meko import MekoClient, MekoError
 from payee_sentinel.context.replay import Recorder, Replayer, ReplayMismatch, latest_recording
 from payee_sentinel.evaluate import carry_learning, run, run_chain, summarize
 from payee_sentinel.scenario import generate, iban_is_valid
+from payee_sentinel.ledger import SqliteLedger
 from payee_sentinel.scenario import Event, make_iban
 from payee_sentinel.story import CHAPTERS, INVOICES, VENDORS, Chapter, Lane, Story
 
@@ -178,6 +179,25 @@ def test_a_recorded_run_replays_exactly_and_stops_when_it_goes_off_script(tmp_pa
     with pytest.raises(ReplayMismatch):
         for ch in CHAPTERS:                                         # no promotion this time: week 2 differs
             off.advance()
+
+
+def test_the_ledger_answers_as_of_queries_and_links_records_to_meko_traces(story):
+    ledger = SqliteLedger("t")
+    ledger.setup({"V001": VENDORS["V001"]}, since=datetime(2026, 7, 1))
+    ledger.contact_changed("V001", "phone", "+49 152 7781934", datetime(2026, 11, 16, 9, 33), "portal")
+    assert ledger.value_as_of("V001", "phone", datetime(2026, 11, 16)) == VENDORS["V001"].phone
+    assert ledger.value_as_of("V001", "phone", datetime(2026, 11, 17)) == "+49 152 7781934"
+
+    meko = story.lanes["learning2"]
+    traces = {d["trace_id"] for d in meko.log}
+    payments, changes = story.ledger.table("payments"), story.ledger.table("bank_changes")
+    assert len(payments) == sum(len(v) for v in INVOICES.values()) and all(p["trace_id"] in traces for p in payments)
+    assert [(c["vendor_id"], c["outcome"]) for c in changes] == [("V001", "blocked"), ("V002", "blocked")]
+    assert all(c["trace_id"] in traces for c in changes)
+    master = {v["vendor_id"]: v for v in story.ledger.table("vendors")}
+    assert master["V001"]["phone"] == "+49 152 7781934"             # the attacker's number is the current one...
+    analyst = [st.title for _, out in story.done for st in out["learning2"].steps if st.agent == "analyst"]
+    assert any(VENDORS["V001"].phone in t and "ledger" in t for t in analyst)   # ...the analyst calls the old one
 
 
 def test_the_committed_real_meko_recording_still_replays():

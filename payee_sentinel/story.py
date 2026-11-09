@@ -23,6 +23,7 @@ from .agents import (BLOCK_BANK_CHANGE_AT, HOLD_AT, STEP_UP_AT, Action, InboxAge
                      PortalAgent, Signal, SupportAgent, VendorMasterAgent, observable, risk_of)
 from .context.base import now_iso
 from .context.local import LocalMeko
+from .ledger import Ledger, SqliteLedger
 from .scenario import Event, Vendor, make_iban
 
 LANES = {"siloed": "Agents in silos (today)", "learning2": "Agents sharing memory in Meko"}
@@ -192,8 +193,8 @@ def _iban(iban: str) -> str:
 class Lane:
     """One team of agents with its own memory store and its own view of the money."""
 
-    def __init__(self, mode: str, store, run_id: str | None = None):
-        self.mode, self.store = mode, store
+    def __init__(self, mode: str, store, run_id: str | None = None, ledger: Ledger | None = None):
+        self.mode, self.store, self.ledger = mode, store, ledger    # the ledger: the Meko lane's system of record
         self.mem = Memory(store, mode, VENDORS, run_id)
         self.agents = {"portal": PortalAgent(self.mem), "support": SupportAgent(self.mem),
                        "inbox": InboxAgent(self.mem)}
@@ -213,7 +214,7 @@ class Lane:
 
     # ---------- helpers ----------
     def _decision(self, agent: str, vendor_id: str, at: datetime, what: str, risk: int, reasons: list[str],
-                  rule: str, outcome: str, since: int) -> None:
+                  rule: str, outcome: str, since: int) -> str:
         """Write every decision to Meko (allow, step-up, hold, block, reject or freeze) as a conversation turn with its
         reasoning, its plan and the search behind it: the query and the ids of the memories it found (Meko shows the
         turn as a decision trace). The same decision goes into `sentinel-audit` for the auditor agent to find.
@@ -239,17 +240,17 @@ class Lane:
         if agent == "vendor_master" and self.asked.get(vendor_id, {}).get("related"):
             trace["related_case"] = f"{self.asked[vendor_id]['related']} ({self.asked[vendor_id]['link']})"
         conv = self.mem.conversation(agent)
-        self.store.add_message(self.mem.signals_dp, conv, agent, f"{VENDORS[vendor_id].name}: {what}", what,
-                               reasoning=reasoning, plan=[f"search Meko for {vendor_id}'s signals",
-                                                          "add up the weights", rule], metadata=trace)
+        trace_id = self.store.add_message(self.mem.signals_dp, conv, agent, f"{VENDORS[vendor_id].name}: {what}", what,
+                                          reasoning=reasoning, plan=[f"search Meko for {vendor_id}'s signals",
+                                                                     "add up the weights", rule], metadata=trace)
         self.mem.record_decision(agent, vendor_id, at, what, risk, rule, reasoning, outcome, trace["memory_ids"])
         self.log.append(dict(trace, agent=agent, vendor_id=vendor_id, at=at, what=what, reasoning=reasoning,
-                             signals=seen))
-        if outcome == "allow":
-            return
-        self.decisions.setdefault(vendor_id, dict(agent=agent, at=at, what=what, risk=risk, reasons=reasons,
-                                                  rule=rule, reasoning=reasoning))
-        self.first_action.setdefault(vendor_id, at)
+                             signals=seen, trace_id=trace_id))
+        if outcome != "allow":
+            self.decisions.setdefault(vendor_id, dict(agent=agent, at=at, what=what, risk=risk, reasons=reasons,
+                                                      rule=rule, reasoning=reasoning))
+            self.first_action.setdefault(vendor_id, at)
+        return trace_id
 
     def _signal_lines(self, sigs: list[Signal]) -> list[str]:
         lines = []
@@ -336,6 +337,11 @@ class Lane:
                 self.requests[e.vendor_id] = e
                 if self.mode != "siloed":              # in silos there is no shared case history to ask
                     step.lines.append(self._ask_about_request(e))
+                if self.ledger:
+                    self.ledger.bank_change_requested(e.id, e.vendor_id, e.data["new_iban"], e.ts, e.data["via"])
+            if e.kind == "contact_change" and self.ledger:
+                self.ledger.contact_changed(e.vendor_id, e.data["field"], e.data["new"], e.ts,
+                                            f"supplier portal, device {e.data['device']}")
             own_reads = [(vid, sigs) for who, vid, sigs in self.mem.reads[r0:] if who == agent]
             if e.kind == "callback" and own_reads:
                 vid, sigs = own_reads[-1]
@@ -346,21 +352,30 @@ class Lane:
                 step.tone = "good"
                 step.lines.append(f"**Matches an attack pattern a person approved: bank details frozen** "
                                   f"(risk {f.risk})")
-                self._decision(f.agent, f.vendor_id, f.at, "bank details frozen by an approved pattern", f.risk,
-                               f.reasons, "freeze when the vendor matches an approved attack pattern", "freeze", r0)
+                trace_id = self._decision(f.agent, f.vendor_id, f.at, "bank details frozen by an approved pattern",
+                                          f.risk, f.reasons, "freeze when the vendor matches an approved attack pattern",
+                                          "freeze", r0)
+                if self.ledger:
+                    self.ledger.frozen(f.vendor_id, f.at, trace_id)
             for act in self.vm.actions[a0:]:
                 step.tone = "good"
                 if act.kind == "reject_bank_change":
                     step.lines.append("**Bank change rejected** — the vendor denied asking for it when called back")
-                    self._decision("vendor_master", act.vendor_id, act.at, "bank change rejected", act.risk,
-                                   act.reasons, "reject a change the vendor denies on the phone number on file",
-                                   "reject", r0)
+                    trace_id = self._decision("vendor_master", act.vendor_id, act.at, "bank change rejected",
+                                              act.risk, act.reasons,
+                                              "reject a change the vendor denies on the phone number on file",
+                                              "reject", r0)
+                    if self.ledger:
+                        self.ledger.bank_change_decided(act.vendor_id, "rejected", act.at, trace_id)
                     continue
                 step.lines.append(f"**Bank change blocked** — risk {act.risk} ≥ {BLOCK_BANK_CHANGE_AT}"
                                   if act.risk else "**Bank change blocked** — the vendor's bank details are frozen")
-                self._decision("vendor_master", act.vendor_id, act.at, "bank change blocked", act.risk, act.reasons,
-                               f"block a confirmed bank change at risk {BLOCK_BANK_CHANGE_AT} or more" if act.risk
-                               else "block every bank change while the vendor's bank details are frozen", "block", r0)
+                trace_id = self._decision("vendor_master", act.vendor_id, act.at, "bank change blocked", act.risk,
+                                          act.reasons, f"block a confirmed bank change at risk {BLOCK_BANK_CHANGE_AT} "
+                                          f"or more" if act.risk else "block every bank change while the vendor's bank "
+                                          "details are frozen", "block", r0)
+                if self.ledger:
+                    self.ledger.bank_change_decided(act.vendor_id, "blocked", act.at, trace_id)
             applied = self.vm.applied.get(e.vendor_id)
             if e.kind == "callback" and applied and applied[1] == e.ts:
                 self.current[e.vendor_id], self.changed_at[e.vendor_id] = applied
@@ -368,8 +383,11 @@ class Lane:
                 step.tone = "bad"
                 step.lines.append(f"Callback confirmed, risk {risk} < {BLOCK_BANK_CHANGE_AT}: "
                                   f"**new bank details applied** ({_iban(applied[0])})")
-                self._decision("vendor_master", e.vendor_id, e.ts, "bank change applied", risk, reasons,
-                               f"apply a confirmed bank change below risk {BLOCK_BANK_CHANGE_AT}", "allow", r0)
+                trace_id = self._decision("vendor_master", e.vendor_id, e.ts, "bank change applied", risk, reasons,
+                                          f"apply a confirmed bank change below risk {BLOCK_BANK_CHANGE_AT}", "allow",
+                                          r0)
+                if self.ledger:
+                    self.ledger.bank_change_decided(e.vendor_id, "applied", e.ts, trace_id)
             if step.lines or e.kind in ("callback", "bank_change_request"):
                 steps.append(step)
         if chapter.review_after:
@@ -400,8 +418,13 @@ class Lane:
                                         dict(kind="pattern", signal_types=types, learning_candidate=True,
                                              vendor_id=vid))
             self.candidates[vid] = dict(ids=ids, types=types, promoted=False, at=when)
-            steps.append(Step("analyst", f"{when:%a %H:%M} · calls {v.name} on {v.phone}, the number on file "
-                                         f"60 days ago", [f"{v.name}: \"We never asked to change our bank "
+            phone, source = v.phone, ""
+            if self.ledger:                          # an "as of" query on the vendor master's history
+                phone = self.ledger.value_as_of(vid, "phone", when - timedelta(days=60)) or v.phone
+                source = " (the ledger's history)"
+                self.ledger.frozen(vid, when, None)
+            steps.append(Step("analyst", f"{when:%a %H:%M} · calls {v.name} on {phone}, the number on file "
+                                         f"60 days ago{source}", [f"{v.name}: \"We never asked to change our bank "
                                                           f"details.\" **Attack confirmed**; bank details stay "
                                                           f"frozen.", f"The auditor agent writes the case up as a "
                                                           f"pattern candidate ({len(types)} signal types)."],
@@ -424,9 +447,11 @@ class Lane:
             to_attacker = iban in ATTACKER_IBANS
             if act is None:
                 risk, reasons = self.pay.last_risk
-                self._decision("payments", v.id, run, f"payment of {_money(amount)} released", risk, reasons,
-                               f"release below risk {HOLD_AT}, and below {STEP_UP_AT} after a bank change", "allow",
-                               r0)
+                trace_id = self._decision("payments", v.id, run, f"payment of {_money(amount)} released", risk,
+                                          reasons, f"release below risk {HOLD_AT}, and below {STEP_UP_AT} after a bank "
+                                          f"change", "allow", r0)
+                if self.ledger:
+                    self.ledger.payment(inv.data["invoice_no"], v.id, run, amount, iban, "paid", trace_id)
                 self.paid_ibans.add(iban)
                 self.payments.append(dict(run=chapter.key, vendor=v.name, invoice=inv.data["invoice_no"],
                                           amount=amount, iban=iban, to_attacker=to_attacker, decision="paid"))
@@ -440,8 +465,10 @@ class Lane:
                 rule = (f"hold for a person at risk {HOLD_AT} or more" if act.kind == "hold" else
                         f"call the number on file 60 days ago before paying, at risk {STEP_UP_AT} or more after a "
                         f"bank change")
-                self._decision("payments", v.id, run, f"payment {act.kind.replace('_', '-')}", act.risk,
-                               act.reasons, rule, act.kind, r0)
+                trace_id = self._decision("payments", v.id, run, f"payment {act.kind.replace('_', '-')}", act.risk,
+                                          act.reasons, rule, act.kind, r0)
+                if self.ledger:
+                    self.ledger.payment(inv.data["invoice_no"], v.id, run, amount, iban, act.kind, trace_id)
                 self.payments.append(dict(run=chapter.key, vendor=v.name, invoice=inv.data["invoice_no"],
                                           amount=amount, iban=iban, to_attacker=False, decision=act.kind))
                 step.tone = "good" if to_attacker else "warn"
@@ -488,12 +515,15 @@ def _event_title(e: Event) -> str:
 class Story:
     """Both lanes, advanced one chapter at a time."""
 
-    def __init__(self, make_store=LocalMeko, run_id: str | None = None):
-        """`make_store` builds the Meko lane's store (real Meko or the simulator). The siloed lane always runs on the
-        simulator: it stands for separate tools with no shared memory."""
+    def __init__(self, make_store=LocalMeko, run_id: str | None = None, make_ledger=SqliteLedger):
+        """`make_store` builds the Meko lane's store (real Meko or the simulator), `make_ledger` its ledger (Postgres in
+        Meko, or SQLite). The siloed lane always runs on the simulator, with no ledger: it stands for separate tools
+        with no shared memory."""
         self.run_id = run_id or uuid.uuid4().hex[:8]
+        self.ledger = make_ledger(f"{self.run_id}-meko")
+        self.ledger.setup(VENDORS, since=MON1 - timedelta(days=120))
         self.lanes = {"siloed": Lane("siloed", LocalMeko(), f"{self.run_id}-siloed"),
-                      "learning2": Lane("learning2", make_store(), f"{self.run_id}-meko")}
+                      "learning2": Lane("learning2", make_store(), f"{self.run_id}-meko", self.ledger)}
         self.done: list[tuple[Chapter, dict[str, Outcome]]] = []
         meko = self.lanes["learning2"]
         for doc in sorted(KNOWLEDGE.glob("*.md")):     # the company's policy and playbook, in Meko's knowledge base
@@ -569,7 +599,27 @@ class Story:
         if policy:
             text = " ".join(policy[0].text.replace("#", "").split())
             lines.append(f"Policy behind the rule, found in Meko's knowledge base: \"{text[:320]}\"")
+        if lane.ledger:
+            lines += self._ledger_lines(lane.ledger, vendor_id, until)
         return lines
+
+    @staticmethod
+    def _ledger_lines(ledger: Ledger, vendor_id: str, until: datetime) -> list[str]:
+        """What the ledger holds about the case, each record with the id of the decision trace behind it in Meko."""
+        v, out = VENDORS[vendor_id], []
+        for b in ledger.table("bank_changes"):
+            if b["vendor_id"] == vendor_id and b["decided_at"] and datetime.fromisoformat(b["decided_at"]) <= until:
+                out.append(f"Ledger ({ledger.kind}): the bank-change request of "
+                           f"{datetime.fromisoformat(b['requested_at']):%a %H:%M} to {_iban(b['new_iban'])} is recorded "
+                           f"as **{b['outcome']}** at {datetime.fromisoformat(b['decided_at']):%a %H:%M} "
+                           f"(decision trace `{str(b['trace_id'])[:8]}`)")
+        for p in ledger.table("payments"):
+            if p["vendor_id"] == vendor_id and datetime.fromisoformat(p["run_at"]) <= until:
+                account = "the vendor's own account" if p["iban"] == v.iban else "a new account"
+                out.append(f"Ledger: invoice {p['invoice_no']} for {_money(p['amount'])}, "
+                           f"{datetime.fromisoformat(p['run_at']):%a %H:%M}, **{p['decision']}** to {account} "
+                           f"({_iban(p['iban'])}; decision trace `{str(p['trace_id'])[:8]}`)")
+        return out
 
     @staticmethod
     def _save_report(lane: Lane, vendor_id: str, lines: list[str]) -> str:

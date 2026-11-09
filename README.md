@@ -61,8 +61,10 @@ Datapacks, per-agent conversations, decision traces for every decision (allow in
 memories behind it), memory with metadata, hybrid search, promotion by a person, collective memory, the knowledge base
 (the company's payment policy, quoted by the auditor, and confirmed case files), artifacts (one report per case),
 `context_search`, and Meko's self-learning loop: Meko grades each open question an agent asks it, the auditor adds
-the missing context after a confirmed case, and Meko replays the weak question to check the fix. Token tracking works
-against the live service but is not used by the agents yet. Feature by feature, with the code that uses each:
+the missing context after a confirmed case, and Meko replays the weak question to check the fix. Postgres inside the
+context: the ledger (vendor master with its history, bank-change requests, payments) is a Postgres database in a Meko
+datapack, every record linked to the decision trace behind it, with a SQLite copy where that database cannot be
+reached (`payee_sentinel/ledger.py`). Token tracking works against the live service but is not used by the agents yet. Feature by feature, with the code that uses each:
 `docs/MEKO_USAGE.md`. Five decisions explained from their traces: `docs/TRACES.md`. What the live service actually
 returned: `docs/MEKO_SMOKE.md`.
 
