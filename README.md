@@ -50,6 +50,9 @@ Logistik's supplier-portal account; week 2, the same crew on Bergmann Verpackung
 the confirmed attack pattern to Meko's collective memory, and week 2 shows what changes.
 Without a `MEKO_API_KEY` everything runs on the offline simulator (`payee_sentinel/context/local.py`). With a key in
 `.env` (see `.env.example`), `python scripts/meko_smoke.py` checks every Meko feature used here against the real service.
+`python scripts/record_run.py --real` records one run on real Meko, call by call, into `recordings/` (do it once, on
+empty datapacks); the demo then offers it as a replay, so a visitor sees what real Meko answered without a key and
+without spending the account's quota (`payee_sentinel/context/replay.py`). No real recording is in the repo yet.
 
 ## How Meko is used
 Datapacks, per-agent conversations, decision traces for every decision (allow included, each with the query and the
