@@ -87,6 +87,7 @@ class Signal:
     evidence: list[str]
     detail: str
     extra: dict = field(default_factory=dict)
+    memory_id: str = ""            # set when the signal was read back from Meko
 
     @property
     def weight(self) -> int:
@@ -110,7 +111,7 @@ class Signal:
                                                           "evidence", "agent_id", "detail", "run",
                                                           "meko_datapack_id")}
         return cls(m["type"], m["vendor_id"], datetime.fromisoformat(m["at"]), m["agent"], list(m["evidence"]),
-                   m.get("detail", hit.text), extra)
+                   m.get("detail", hit.text), extra, hit.id)
 
 
 @dataclass
@@ -180,12 +181,15 @@ class Memory:
                               self._tag(dict(kind="resolution", vendor_id=vendor_id, at=at.isoformat(),
                                              verdict=verdict)))
 
-    def _vendor_hits(self, agent: str, vendor_id: str) -> list[Hit]:
+    def query(self, vendor_id: str) -> str:
+        """The search an agent runs for a vendor's signals; each decision's trace keeps it."""
         v = self.vendors[vendor_id]
-        query = f"risk signals for vendor {vendor_id} {v.name}" + (f" run {self.run_id}" if self.run_id else "")
+        return f"risk signals for vendor {vendor_id} {v.name}" + (f" run {self.run_id}" if self.run_id else "")
+
+    def _vendor_hits(self, agent: str, vendor_id: str) -> list[Hit]:
         limit = 50 if self.run_id else 30     # demo runs share datapacks with earlier rehearsals
-        return [h for h in self.store.memory_search(self.signals_dp, self.conversation(agent), agent, query,
-                                                    limit=limit) if self._ours(h)]
+        return [h for h in self.store.memory_search(self.signals_dp, self.conversation(agent), agent,
+                                                    self.query(vendor_id), limit=limit) if self._ours(h)]
 
     def history(self, agent: str, vendor_id: str, until: datetime) -> list[Signal]:
         """Every signal about the vendor up to `until`, closed cases included: what an auditor reads."""
@@ -194,14 +198,16 @@ class Memory:
         return sorted(sigs, key=lambda s: s.at)
 
     def record_decision(self, agent: str, vendor_id: str, at: datetime, what: str, risk: int, rule: str,
-                        reasoning: str) -> None:
-        """Keep the decision itself as a memory in `sentinel-audit`, so an auditor can find it later."""
+                        reasoning: str, outcome: str = "block", memory_ids: list[str] | None = None) -> None:
+        """Keep the decision itself as a memory in `sentinel-audit`, so an auditor can find it later, with the ids
+        of the signal memories it was based on."""
         v = self.vendors[vendor_id]
         self.store.memory_add(self.audit_dp, self.conversation(agent), agent,
                               f"Decision on vendor {vendor_id} {v.name} by the {agent} agent at {at:%Y-%m-%d %H:%M}: "
                               f"{what}. Risk {risk}; rule: {rule}. {reasoning}" + self._run_words(),
                               self._tag(dict(kind="decision", vendor_id=vendor_id, at=at.isoformat(), agent=agent,
-                                             what=what, risk=risk, rule=rule, reasoning=reasoning)))
+                                             what=what, outcome=outcome, risk=risk, rule=rule, reasoning=reasoning,
+                                             memory_ids=memory_ids or [])))
 
     def decisions(self, agent: str, vendor_id: str) -> list[dict]:
         v = self.vendors[vendor_id]
@@ -470,6 +476,7 @@ class VendorMasterAgent(Agent):
 
 class PaymentAgent(Agent):
     name = "payments"
+    last_risk: tuple[int, list[str]] = (0, [])     # risk and reasons behind the latest decision, a payment included
 
     def decide(self, run: datetime, v: Vendor, invoice: Event, iban: str, changed_at: datetime | None,
                paid_ibans: set[str]) -> Action | None:
@@ -497,6 +504,7 @@ class PaymentAgent(Agent):
                               dict(pattern_id=hit.id)))
             self.mem.write(own[-1])
         risk, reasons = risk_of(sigs + own)
+        self.last_risk = (risk, reasons)
         ref = invoice.data["invoice_no"]
         if risk >= HOLD_AT:
             return Action(run, self.name, "hold", v.id, risk, reasons, ref)

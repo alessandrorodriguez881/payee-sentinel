@@ -22,6 +22,8 @@ def test_click_through_the_story_with_a_promotion(monkeypatch):
         if step == 1:                                    # Tuesday: the vendor-master agent blocks the change
             assert any("Bank change blocked" in m.value for m in at.markdown)
     assert any("bank change blocked." in m.value for m in at.markdown)   # the auditor's explanation
+    assert any("**mid → high**" in m.value for m in at.markdown)       # Meko's self-learning loop fixed a search
+    assert at.selectbox[0].label == "Open a decision's trace"
     _button(at, "Promote to collective memory").click()  # a person approves the pattern
     at.run()
     assert any("Promoted to Meko's collective memory" in s.value for s in at.success)

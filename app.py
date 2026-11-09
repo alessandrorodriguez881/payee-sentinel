@@ -137,6 +137,14 @@ with story_tab:
                                        "every agent finds it.")
                             st.button("Promote to collective memory", type="primary", icon=":material/hub:",
                                       on_click=promote_pattern)
+                if outcomes["learning2"].learning:
+                    with st.container(border=True):
+                        st.markdown("**Meko's self-learning loop, run by the auditor agent**")
+                        for line in outcomes["learning2"].learning:
+                            st.markdown(f"- {line}")
+                        st.caption("Meko grades every open question an agent asks it and lists the weak ones. The "
+                                   "fix is new context; the replay checks it. Next week's request will be asked the "
+                                   "same way.")
         else:
             summary = story.summary()
             cols = st.columns(2, gap="large")
@@ -170,13 +178,42 @@ with meko_tab:
     calls = store.calls
     counts = st.columns(4)
     counts[0].metric("Memories written", sum(c.tool == "memory_add" for c in calls), border=True)
-    counts[1].metric("Searches", sum(c.tool in ("memory_search", "memory_get_all", "context_search")
-                                     for c in calls), border=True)
+    counts[1].metric("Searches", sum(c.tool in ("memory_search", "memory_get_all", "context_search",
+                                                "knowledgebase_search", "selflearning_verify") for c in calls),
+                     border=True)
     counts[2].metric("Decisions with reasoning", sum(c.tool == "conversation_add_message" for c in calls),
                      border=True)
-    counts[3].metric("Promotions by a person", sum(c.tool == "promote_memories" for c in calls), border=True)
-    st.caption("Every call the Meko lane made, newest first. Each decision is saved twice: as a conversation turn with "
-               "its reasoning, and as a decision record the auditor agent searches when it explains a case.")
+    counts[3].metric("Promotions by a person", sum(c.tool in ("promote_memories", "POST /promote-memories")
+                                                   for c in calls), border=True)
+    log = meko_lane.log
+    if log:
+        st.markdown("**Every decision, with the search behind it**")
+        st.caption("Allow, step-up, hold, block or freeze: each one is a conversation turn in Meko with its reasoning, "
+                   "its plan, the query the agent ran and the ids of the memories it found.")
+        st.dataframe([dict(when=f"{d['at']:%a %d %b %H:%M}", agent=AGENT_NAMES[d["agent"]],
+                           vendor=VENDORS[d["vendor_id"]].name, decision=d["what"], outcome=d["outcome"],
+                           risk=d["risk"], memories=len(d["memory_ids"]), related_case=d.get("related_case", ""))
+                      for d in log], hide_index=True, alt="Every decision the Meko lane made")
+        first_stop = next((i for i, d in enumerate(log) if d["outcome"] != "allow"), 0)
+        pick = st.selectbox("Open a decision's trace", range(len(log)), index=first_stop,
+                            format_func=lambda i: f"{log[i]['at']:%a %H:%M} · {AGENT_NAMES[log[i]['agent']]} · "
+                                                  f"{VENDORS[log[i]['vendor_id']].name}: {log[i]['what']}")
+        d = log[pick]
+        with st.container(border=True):
+            st.markdown(f"**{AGENT_NAMES[d['agent']]}, {d['at']:%A %d %B %H:%M}: {d['what']}** ({d['outcome']})")
+            st.markdown(f"- Reasoning saved in Meko: {d['reasoning']}")
+            st.markdown(f"- Search: `{d['query']}` in `{d['datapack']}`, "
+                        f"{len(d['memory_ids'])} memories found")
+            if d.get("related_case"):
+                st.markdown(f"- Earlier confirmed case Meko found for this request: {d['related_case']}")
+            if d["signals"]:
+                st.dataframe([dict(seen=f"{s.at:%a %d %b %H:%M}", agent=AGENT_NAMES[s.agent], signal=s.type,
+                                   weight=s.weight, detail=s.detail, memory=s.memory_id[:8])
+                              for s in sorted(d["signals"], key=lambda s: s.at)],
+                             hide_index=True, alt="The memories behind the decision")
+    st.markdown("**Every call to Meko**")
+    st.caption("Newest first. Each decision is saved twice: as a conversation turn with its reasoning, and as a "
+               "decision record the auditor agent searches when it explains a case.")
     st.dataframe([dict(time=datetime.fromisoformat(c.at).astimezone().strftime("%H:%M:%S"),
                        agent=AGENT_NAMES.get(c.agent_id, c.agent_id), call=c.tool,
                        datapack=dp_name.get(c.datapack, c.datapack), what=c.summary,

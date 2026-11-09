@@ -5,7 +5,8 @@ It keeps Meko's rules that the agents depend on:
   attribution); nothing crosses datapacks;
 - promoting a memory is one-way: it leaves the private store (and `memory_search`), joins the shared knowledge side,
   and is listed by `collective()` without its metadata, as real Meko does (checked on 2026-11-08);
-- `context_search` answers in separate buckets (memory, knowledge base, conversations);
+- `context_search` answers in separate buckets (memory, knowledge base, conversations), grades itself (high, mid or
+  low) and is logged, so the self-learning loop can list weak searches and replay one after context was added;
 - artifacts are content-addressed (same bytes, same hash); the Free plan allows 10 datapacks.
 
 What it does not copy: Meko ranks with embeddings plus keywords and entities, and extracts facts with an LLM. This
@@ -23,6 +24,11 @@ import uuid
 from .base import Call, Hit, approx_tokens, now_iso
 
 FREE_DATAPACKS = 10
+BANDS = ("low", "mid", "high")
+HIGH, MID = 0.75, 0.2       # bands of the best score; set so the demo's searches get the bands real Meko gave them
+HINTS = {"high": "Strong match: answer from these results.",
+         "mid": "Partial match: use these results, and tell the user what is missing.",   # Meko's own wording
+         "low": "Little or nothing found: say so rather than guess."}
 _WORD = re.compile(r"[a-z0-9][a-z0-9_.\-]*")
 _ENTITY = re.compile(r"\b(V\d{3}|E\d{5}|ATK-\d{2}|[A-Z]{2}\d{2}[A-Z0-9]{10,30})\b")
 
@@ -49,6 +55,8 @@ class LocalMeko:
         self.knowledge: dict[str, list[dict]] = {}   # datapack id -> chunks
         self.artifacts: dict[str, bytes] = {}
         self.token_usage: list[dict] = []
+        self.searches: list[dict] = []               # every context_search, graded like Meko's self-learning log
+        self.last_search: dict = {}
 
     # ---------- bookkeeping ----------
     def _log(self, agent_id, tool, datapack, conversation_id, summary, t0, returned=None) -> None:
@@ -122,11 +130,7 @@ class LocalMeko:
         self._log(agent_id, "memory_search", datapack_id, conversation_id, query, t0, [h.text for h in hits])
         return hits
 
-    def context_search(self, datapack_id, conversation_id, agent_id, query, limit=10) -> dict[str, list[Hit]]:
-        t0 = time.perf_counter()
-        self._check(datapack_id)
-        mem = self._memory_hits(datapack_id, query)[:limit]
-        kb = self._kb_hits(datapack_id, query)[:limit]
+    def _context_hits(self, datapack_id: str, query: str, limit: int) -> dict[str, list[Hit]]:
         conv = []
         for cid, c in self.conversations.items():
             if c["datapack"] != datapack_id:
@@ -137,10 +141,58 @@ class LocalMeko:
                 if s > 0:
                     conv.append(Hit(msg["id"], msg["output"], s, dict(msg["metadata"], agent_id=msg["agent_id"],
                                                                       conversation_id=cid), "conversation"))
-        conv = sorted(conv, key=lambda h: -h.score)[:limit]
-        out = {"memory": mem, "knowledge_base": kb, "conversation": conv}
+        return {"memory": self._memory_hits(datapack_id, query)[:limit],
+                "knowledge_base": self._kb_hits(datapack_id, query)[:limit],
+                "conversation": sorted(conv, key=lambda h: -h.score)[:limit]}
+
+    @staticmethod
+    def _band(out: dict[str, list[Hit]]) -> tuple[str, float]:
+        best = max((h.score for b in out.values() for h in b), default=0.0)
+        return ("high" if best >= HIGH else "mid" if best >= MID else "low"), best
+
+    def context_search(self, datapack_id, conversation_id, agent_id, query, limit=10) -> dict[str, list[Hit]]:
+        """Like Meko, grades the search (`last_search`) and logs it for the self-learning loop."""
+        t0 = time.perf_counter()
+        self._check(datapack_id)
+        out = self._context_hits(datapack_id, query, limit)
+        band, best = self._band(out)
+        self.searches.append(dict(id=str(uuid.uuid4()), datapack=datapack_id, query=query, agent_id=agent_id,
+                                    band=band, best_score=best, at=now_iso()))
+        self.last_search = dict(quality=band, hint=HINTS[band])
         self._log(agent_id, "context_search", datapack_id, conversation_id, query, t0,
                   [h.text for b in out.values() for h in b])
+        return out
+
+    # ---------- self-learning (Meko's to-do list of weak searches, and replays to check a fix) ----------
+    def selflearning_status(self, datapack_id, conversation_id) -> dict:
+        t0 = time.perf_counter()
+        rows = [r for r in self.searches if r["datapack"] == datapack_id]
+        weak = [r for r in rows if r["band"] != "high"]
+        out = dict(quality=dict(pct=round(100 * (len(rows) - len(weak)) / len(rows)) if rows else None,
+                                searches=len(rows), high=len(rows) - len(weak)),
+                   open_fixes=["add_context"] if weak else [],
+                   todos=[dict(id="add_context", searches=len(weak),
+                               examples=[dict(log_id=r["id"], label=r["query"][:60]) for r in weak[-3:]])])
+        self._log("auditor", "selflearning_status", datapack_id, conversation_id,
+                  f"{len(rows) - len(weak)} of {len(rows)} searches strong", t0)
+        return out
+
+    def search_log(self, datapack_id, conversation_id, query) -> dict | None:
+        t0 = time.perf_counter()
+        row = next((r for r in reversed(self.searches) if r["datapack"] == datapack_id and r["query"] == query),
+                   None)
+        self._log("auditor", "selflearning_query_log", datapack_id, conversation_id, query, t0)
+        return row
+
+    def selflearning_verify(self, datapack_id, conversation_id, log_id) -> dict:
+        """Replay a logged search as it would run now; like Meko, the replay is not logged itself."""
+        t0 = time.perf_counter()
+        row = next(r for r in self.searches if r["id"] == log_id)
+        band, best = self._band(self._context_hits(datapack_id, row["query"], 10))
+        out = dict(query=row["query"], before=dict(band=row["band"], best_score=row["best_score"]),
+                   after=dict(band=band, best_score=best),
+                   outcome="improved" if BANDS.index(band) > BANDS.index(row["band"]) else "unchanged")
+        self._log("auditor", "selflearning_verify", datapack_id, conversation_id, f"{row['band']} -> {band}", t0)
         return out
 
     def collective(self, datapack_id, conversation_id, agent_id) -> list[Hit]:
@@ -176,7 +228,7 @@ class LocalMeko:
         return moved
 
     # ---------- knowledge base ----------
-    def knowledge_upload(self, datapack_id, filename, content: bytes) -> str:
+    def knowledge_upload(self, datapack_id, filename, content: bytes, conversation_id=None) -> str:
         t0 = time.perf_counter()
         self._check(datapack_id)
         text = content.decode("utf-8")
@@ -186,6 +238,9 @@ class LocalMeko:
         self.knowledge[datapack_id] += [dict(doc=doc_id, file=filename, n=i, text=c) for i, c in enumerate(chunks)]
         self._log("setup", "knowledgebase_upload", datapack_id, None, f"{filename}: {len(chunks)} chunks", t0)
         return doc_id
+
+    def knowledge_ready(self, datapack_id, key, conversation_id=None, timeout=60.0) -> str:
+        return "completed"          # indexed at once here; real Meko takes a few seconds
 
     def _kb_hits(self, datapack_id: str, query: str) -> list[Hit]:
         hits = [Hit(f"{c['doc']}#{c['n']}", c["text"], _score(query, c["text"]), dict(file=c["file"]),

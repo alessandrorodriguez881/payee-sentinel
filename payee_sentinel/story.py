@@ -25,6 +25,9 @@ from .scenario import Event, Vendor, make_iban
 
 LANES = {"siloed": "Agents in silos (today)", "learning2": "Agents sharing memory in Meko"}
 KNOWLEDGE = Path(__file__).resolve().parent / "knowledge"
+CASE_TITLE = "Confirmed fraud case:"
+COUNTRIES = {"DE": "Germany", "FR": "France", "IT": "Italy", "LT": "Lithuania", "NG": "Nigeria", "NL": "Netherlands",
+             "RU": "Russia"}
 BUYER = "Hallberg Components GmbH"
 AGENT_NAMES = {"portal": "Portal agent", "inbox": "Inbox agent", "support": "Support agent",
                "vendor_master": "Vendor-master agent", "payments": "Payments agent", "analyst": "Analyst (a person)",
@@ -167,6 +170,7 @@ class Outcome:
     headline: str
     tone: str = "neutral"
     notes: list[str] = field(default_factory=list)
+    learning: list[str] = field(default_factory=list)   # the auditor's run of Meko's self-learning loop
 
 
 def _n(count: int, word: str) -> str:
@@ -198,20 +202,36 @@ class Lane:
         self.first_action: dict[str, datetime] = {}
         self.candidates: dict[str, dict] = {}      # vendor -> pattern candidate waiting for a person
         self.decisions: dict[str, dict] = {}       # vendor -> the decision record behind the first protective action
+        self.log: list[dict] = []                  # every decision, with the search and the memories behind it
+        self.requests: dict[str, Event] = {}       # vendor -> its latest bank-change request
+        self.asked: dict[str, dict] = {}           # vendor -> the vendor-master agent's question about earlier cases
+        self.learning: dict = {}                   # what the auditor's run of Meko's self-learning loop found
 
     # ---------- helpers ----------
     def _decision(self, agent: str, vendor_id: str, at: datetime, what: str, risk: int, reasons: list[str],
-                  rule: str) -> None:
-        """Write the decision to Meko as a conversation turn with its reasoning (Meko shows it as a decision trace)."""
-        seen = [s for _, vid, sigs in self.mem.reads if vid == vendor_id for s in sigs]
+                  rule: str, outcome: str) -> None:
+        """Write every decision to Meko (allow, step-up, hold, block or freeze) as a conversation turn with its
+        reasoning, its plan and the search behind it: the query and the ids of the memories it found (Meko shows the
+        turn as a decision trace). The same decision goes into `sentinel-audit` for the auditor agent to find."""
+        reads = [sigs for who, vid, sigs in self.mem.reads if who == agent and vid == vendor_id]
+        seen = reads[-1] if reads else []
         by_agent = sorted({s.agent for s in seen})
-        reasoning = (f"Risk {risk} from {len(set(s.type for s in seen))} signal types written by "
-                     f"{', '.join(AGENT_NAMES.get(a, a) for a in by_agent) or 'no other agent'}; {rule}.")
+        reasoning = (f"Risk {risk} from {_n(len(set(s.type for s in seen)), 'signal type')} written by "
+                     f"{', '.join(AGENT_NAMES.get(a, a) for a in by_agent) or 'no agent'}; {rule}.")
+        trace = dict(outcome=outcome, risk=risk, rule=rule, query=self.mem.query(vendor_id),
+                     datapack="sentinel-signals", memory_ids=[s.memory_id for s in seen if s.memory_id],
+                     signal_types=sorted({s.type for s in seen}))
+        if agent == "vendor_master" and self.asked.get(vendor_id, {}).get("related"):
+            trace["related_case"] = self.asked[vendor_id]["related"]
         conv = self.mem.conversation(agent)
         self.store.add_message(self.mem.signals_dp, conv, agent, f"{VENDORS[vendor_id].name}: {what}", what,
                                reasoning=reasoning, plan=[f"search Meko for {vendor_id}'s signals",
-                                                          "add up the weights", rule])
-        self.mem.record_decision(agent, vendor_id, at, what, risk, rule, reasoning)
+                                                          "add up the weights", rule], metadata=trace)
+        self.mem.record_decision(agent, vendor_id, at, what, risk, rule, reasoning, outcome, trace["memory_ids"])
+        self.log.append(dict(trace, agent=agent, vendor_id=vendor_id, at=at, what=what, reasoning=reasoning,
+                             signals=seen))
+        if outcome == "allow":
+            return
         self.decisions.setdefault(vendor_id, dict(agent=agent, at=at, what=what, risk=risk, reasons=reasons,
                                                   rule=rule, reasoning=reasoning))
         self.first_action.setdefault(vendor_id, at)
@@ -225,6 +245,29 @@ class Lane:
                     detail = detail.replace(f"pattern {mid[:8]}", f"pattern from the {VENDORS[vid].name} case")
             lines.append(f"`{s.type}` (+{s.weight}) — {detail}")
         return lines
+
+    def case_question(self, e: Event) -> str:
+        iban = e.data["new_iban"]
+        return (f"Has the bank account {iban} ({COUNTRIES.get(iban[:2], iban[:2])}) or the device {e.data['device']} "
+                f"appeared in an earlier confirmed fraud case? Bank-change request for {VENDORS[e.vendor_id].name}.")
+
+    def _ask_about_request(self, e: Event) -> str:
+        """The vendor-master agent asks Meko in plain words, across memory, knowledge base and past conversations
+        (`context_search` in `sentinel-patterns`), whether the new account or device belongs to an earlier confirmed
+        case. Meko grades every such search, and the weak ones feed its self-learning loop. The answer goes into the
+        decision's trace; the decision itself stays with the rules."""
+        q = self.case_question(e)
+        found = self.store.context_search(self.mem.patterns_dp, self.mem.conversation("vendor_master"),
+                                          "vendor_master", q, limit=5)
+        quality = self.store.last_search.get("quality") or "not graded"
+        case = next((h for h in found["knowledge_base"] if CASE_TITLE in h.text), None)
+        related = next((v.name for v in VENDORS.values() if case and v.name in case.text), None)
+        self.asked[e.vendor_id] = dict(query=q, quality=quality, related=related, at=e.ts)
+        if related:
+            return (f"Asked Meko whether this account or device appeared in an earlier case: **confirmed case found, "
+                    f"{related}** (Meko rates the match {quality})")
+        return (f"Asked Meko whether this account or device appeared in an earlier case: nothing specific (Meko rates "
+                f"the match {quality} and keeps the search for its self-learning loop)")
 
     # ---------- chapters ----------
     def run_events(self, chapter: Chapter) -> Outcome:
@@ -248,6 +291,10 @@ class Lane:
                 title = (f"{first_fail[e.vendor_id]:%a %H:%M} · {total_fails[e.vendor_id]} failed portal logins "
                          f"within a minute from {e.data['device']} ({e.data['country']})")
             step = Step(agent, title, self._signal_lines(self.mem.written[w0:]))
+            if e.kind == "bank_change_request":
+                self.requests[e.vendor_id] = e
+                if self.mode != "siloed":              # in silos there is no shared case history to ask
+                    step.lines.append(self._ask_about_request(e))
             own_reads = [(vid, sigs) for who, vid, sigs in self.mem.reads[r0:] if who == agent]
             if e.kind == "callback" and own_reads:
                 vid, sigs = own_reads[-1]
@@ -259,20 +306,23 @@ class Lane:
                 step.lines.append(f"**Matches an attack pattern a person approved: bank details frozen** "
                                   f"(risk {f.risk})")
                 self._decision(f.agent, f.vendor_id, f.at, "bank details frozen by an approved pattern", f.risk,
-                               f.reasons, "freeze when the vendor matches an approved attack pattern")
+                               f.reasons, "freeze when the vendor matches an approved attack pattern", "freeze")
             for act in self.vm.actions[a0:]:
                 step.tone = "good"
                 step.lines.append(f"**Bank change blocked** — risk {act.risk} ≥ {BLOCK_BANK_CHANGE_AT}"
                                   if act.risk else "**Bank change blocked** — the vendor's bank details are frozen")
                 self._decision("vendor_master", act.vendor_id, act.at, "bank change blocked", act.risk, act.reasons,
-                               f"block a confirmed bank change at risk {BLOCK_BANK_CHANGE_AT} or more")
+                               f"block a confirmed bank change at risk {BLOCK_BANK_CHANGE_AT} or more" if act.risk
+                               else "block every bank change while the vendor's bank details are frozen", "block")
             applied = self.vm.applied.get(e.vendor_id)
             if e.kind == "callback" and applied and applied[1] == e.ts:
                 self.current[e.vendor_id], self.changed_at[e.vendor_id] = applied
-                risk, _ = risk_of(own_reads[-1][1]) if own_reads else (0, [])
+                risk, reasons = risk_of(own_reads[-1][1]) if own_reads else (0, [])
                 step.tone = "bad"
                 step.lines.append(f"Callback confirmed, risk {risk} < {BLOCK_BANK_CHANGE_AT}: "
                                   f"**new bank details applied** ({_iban(applied[0])})")
+                self._decision("vendor_master", e.vendor_id, e.ts, "bank change applied", risk, reasons,
+                               f"apply a confirmed bank change below risk {BLOCK_BANK_CHANGE_AT}", "allow")
             if step.lines or e.kind in ("callback", "bank_change_request"):
                 steps.append(step)
         if chapter.review_after:
@@ -325,6 +375,9 @@ class Lane:
             amount = inv.data["amount"]
             to_attacker = iban in ATTACKER_IBANS
             if act is None:
+                risk, reasons = self.pay.last_risk
+                self._decision("payments", v.id, run, f"payment of {_money(amount)} released", risk, reasons,
+                               f"release below risk {HOLD_AT}, and below {STEP_UP_AT} after a bank change", "allow")
                 self.paid_ibans.add(iban)
                 self.payments.append(dict(run=chapter.key, vendor=v.name, invoice=inv.data["invoice_no"],
                                           amount=amount, iban=iban, to_attacker=to_attacker, decision="paid"))
@@ -339,7 +392,7 @@ class Lane:
                         f"call the number on file 60 days ago before paying, at risk {STEP_UP_AT} or more after a "
                         f"bank change")
                 self._decision("payments", v.id, run, f"payment {act.kind.replace('_', '-')}", act.risk,
-                               act.reasons, rule)
+                               act.reasons, rule, act.kind)
                 self.payments.append(dict(run=chapter.key, vendor=v.name, invoice=inv.data["invoice_no"],
                                           amount=amount, iban=iban, to_attacker=False, decision=act.kind))
                 step.tone = "good" if to_attacker else "warn"
@@ -413,9 +466,11 @@ class Story:
                 out[mode] = lane.run_payments(ch)
             else:
                 notes = self.explain(mode, "V001", ch.when) if ch.kind == "audit" else []
+                learning = []
                 if notes and mode == "learning2":
                     notes.append(self._save_report(lane, "V001", notes))
-                out[mode] = Outcome(ch.key, [], "", notes=notes)
+                    learning = self.self_learning(lane, "V001")
+                out[mode] = Outcome(ch.key, [], "", notes=notes, learning=learning)
         self.done.append((ch, out))
 
     def promote(self, vendor_id: str) -> bool:
@@ -429,16 +484,22 @@ class Story:
         return True
 
     def explain(self, mode: str, vendor_id: str, until: datetime) -> list[str]:
-        """Plain-language account of the first protective decision on a vendor. The auditor agent rebuilds it from
-        memory: the decision record it finds in `sentinel-audit` and the signals in `sentinel-signals`."""
+        """Plain-language account of the first protective decision on a vendor, or, when nothing was stopped, of the
+        decisions that let the money through. The auditor agent rebuilds it from memory: the decision records it
+        finds in `sentinel-audit` and the signals in `sentinel-signals`."""
         lane = self.lanes[mode]
         v = VENDORS[vendor_id]
-        found = lane.mem.decisions("auditor", vendor_id)
-        if not found:
+        found = [d for d in lane.mem.decisions("auditor", vendor_id) if datetime.fromisoformat(d["at"]) <= until]
+        stopped = [d for d in found if d.get("outcome", "block") != "allow"]
+        if not stopped:
+            lines = [f"No agent stopped anything for {v.name}."]
+            for d in found:
+                lines.append(f"{AGENT_NAMES[d['agent']]}, {datetime.fromisoformat(d['at']):%a %H:%M}: "
+                             f"**{d['what']}**. Its decision record: {d['reasoning']}")
             per_agent: dict[str, list[Signal]] = {}
             for s in lane.mem.history("auditor", vendor_id, until):
                 per_agent.setdefault(AGENT_NAMES[s.agent], []).append(s)
-            lines = [f"No agent stopped anything for {v.name}. Each one saw only its own part:"]
+            lines.append("Each agent saw only its own part:")
             limits = {AGENT_NAMES["vendor_master"]: f"its limit to block a bank change is {BLOCK_BANK_CHANGE_AT}",
                       AGENT_NAMES["payments"]: f"its limit to hold a payment is {HOLD_AT}"}
             for name, ss in per_agent.items():
@@ -446,7 +507,7 @@ class Story:
                 lines.append(f"{name}: {_n(len(ss), 'signal')}, risk {risk} — "
                              + (limits.get(name) or "it decides nothing itself, and no other agent could read them"))
             return lines
-        d = found[0]
+        d = stopped[0]
         at = datetime.fromisoformat(d["at"])
         lines = [f"**{AGENT_NAMES[d['agent']]}, {at:%A %H:%M}: {d['what']}.** Risk {d['risk']}; rule: {d['rule']}.",
                  "The signals it found in Meko before it acted:"]
@@ -469,6 +530,59 @@ class Story:
                                          f"case-{vendor_id}-{lane.mem.run_id}.md", report.encode("utf-8"),
                                          "text/markdown")
         return f"Case report saved in Meko as an artifact (sha256 {digest[:12]}…)"
+
+    def self_learning(self, lane: Lane, vendor_id: str) -> list[str]:
+        """Meko's self-learning loop, run by the auditor agent once a case is confirmed. Meko grades every
+        `context_search` and lists the weak ones (`selflearning_status`); the auditor adds what was missing, the
+        confirmed case file, to the knowledge base; Meko then replays the weak search (`selflearning_verify`) to check
+        the fix. The next request from the same crew finds the case."""
+        if vendor_id not in lane.confirmed:
+            return []
+        mem, store = lane.mem, lane.store
+        conv = mem.conversation("auditor")
+        status = store.selflearning_status(mem.patterns_dp, conv)
+        q = status.get("quality") or {}
+        n = q.get("searches") or 0
+        lines = [f"Meko's self-learning check of `sentinel-patterns`: {q.get('high') or 0} of {n} "
+                 f"{'search' if n == 1 else 'searches'} today found a strong match"]
+        asked = lane.asked.get(vendor_id)
+        row = store.search_log(mem.patterns_dp, conv, asked["query"]) if asked else None
+        if asked:
+            lines.append(f"Weak search: the vendor-master agent's question on {asked['at']:%A %H:%M}, "
+                         f"\"{asked['query']}\" (match {(row or {}).get('band') or asked['quality']})")
+        key = store.knowledge_upload(mem.patterns_dp, f"case-{vendor_id}-{mem.run_id}.md",
+                                     self._case_file(lane, vendor_id).encode("utf-8"), conversation_id=conv)
+        store.knowledge_ready(mem.patterns_dp, key, conv)
+        lines.append("The auditor agent adds what was missing to Meko's knowledge base: the confirmed case file, with "
+                     "the account, the device and the order of the attacker's steps")
+        if not row or row.get("band") == "high":
+            lane.learning = dict(quality=q)
+            return lines + ["Nothing to replay: Meko's log shows no weak search about this case."]
+        v = store.selflearning_verify(mem.patterns_dp, conv, row["id"])
+        before, after = v.get("before") or {}, v.get("after") or {}
+        lines.append(f"Meko replays the question: **{before.get('band')} → {after.get('band')}** (best score "
+                     f"{before.get('best_score') or 0:.2f} → {after.get('best_score') or 0:.2f})")
+        lane.learning = dict(quality=q, before=before, after=after, outcome=v.get("outcome"))
+        return lines
+
+    @staticmethod
+    def _case_file(lane: Lane, vendor_id: str) -> str:
+        """The confirmed case as one knowledge-base section, written from what the company's own systems logged."""
+        v, req = VENDORS[vendor_id], lane.requests[vendor_id]
+        stop = next((d for d in lane.log if d["vendor_id"] == vendor_id and d["outcome"] != "allow"), None)
+        sigs = sorted(stop["signals"] if stop else [], key=lambda s: s.at)
+        iban, device, country = req.data["new_iban"], req.data["device"], req.data["country"]
+        return "\n".join([
+            f"# {CASE_TITLE} {v.name} ({vendor_id}), {req.ts:%B %Y}",
+            f"Vendor-account takeover confirmed by the analyst on {lane.confirmed[vendor_id]:%A %d %B %H:%M}, by "
+            f"calling the vendor on the phone number on file 60 days earlier: the vendor never asked to change its bank "
+            f"details. [run {lane.mem.run_id}]",
+            f"- Bank account in the request: {iban} ({COUNTRIES.get(iban[:2], iban[:2])}), account holder given as "
+            f"{req.data['holder']}, entered through the {req.data['via']}",
+            f"- Device of the portal session: {device}, from {COUNTRIES.get(country, country)}",
+            "- What the agents saw, in order: " + "; ".join(f"{s.at:%a %d %b %H:%M} {s.type} ({s.detail.rstrip('.')})"
+                                                            for s in sigs),
+            f"- Signal types: [{', '.join(sorted(observable(s.type for s in sigs)))}]", ""])
 
     def summary(self) -> dict[str, dict]:
         out = {}

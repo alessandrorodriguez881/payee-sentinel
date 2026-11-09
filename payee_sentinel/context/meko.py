@@ -97,6 +97,7 @@ class MekoClient:
         self._ids = itertools.count(1)
         self._ready = False
         self._datapacks: dict[str, str] = {}
+        self.last_search: dict = {}
 
     # ---------- transport ----------
     def _headers(self, json_body: bool = True) -> dict[str, str]:
@@ -190,7 +191,8 @@ class MekoClient:
                     metadata=None) -> str:
         out = self._tool(agent_id, "conversation_add_message", dict(
             datapack_id=datapack_id, conversation_id=conversation_id, agent_id=agent_id, input=input, output=output,
-            reasoning=reasoning, plan=plan, metadata=metadata), output[:120])
+            reasoning=reasoning, plan=plan, metadata=json.dumps(metadata) if metadata is not None else None),
+            output[:120])
         return str(out.get("message_id") or out.get("id") or "") if isinstance(out, dict) else ""
 
     # ---------- memory ----------
@@ -208,9 +210,12 @@ class MekoClient:
         return _hits(out, "memory")
 
     def context_search(self, datapack_id, conversation_id, agent_id, query, limit=10) -> dict[str, list[Hit]]:
+        """Meko grades every `context_search` (`match_quality`: high, mid or low, with a hint for the agent) and logs
+        it for the self-learning loop; `last_search` keeps that verdict and Meko's `token_savings`."""
         out = self._tool(agent_id, "context_search", dict(datapack_id=datapack_id, conversation_id=conversation_id,
                                                            agent_id=agent_id, query=query, limit=limit), query)
-        self.last_token_savings = out.get("token_savings") if isinstance(out, dict) else None
+        self.last_search = (dict(quality=out.get("match_quality"), hint=out.get("agent_hint"),
+                                 token_savings=out.get("token_savings")) if isinstance(out, dict) else {})
         buckets = out.get("results", out) if isinstance(out, dict) else {}
         conv = buckets.get("conversation") or {}
         return {"memory": _hits(buckets.get("memory") or [], "memory"),
@@ -249,6 +254,45 @@ class MekoClient:
             if res.status_code >= 300:
                 raise MekoError(f"knowledge upload to storage failed: {res.status_code} {res.text[:200]}")
         return out.get("key", "")
+
+    def knowledge_ready(self, datapack_id, key, conversation_id=None, timeout=60.0) -> str:
+        """Wait until an uploaded document is indexed (about 10 s in our tests); returns its last state."""
+        cid = conversation_id or self.conversation_create(datapack_id, "setup", "knowledge status")
+        state, until = "unknown", time.monotonic() + timeout
+        while time.monotonic() < until:
+            out = self._tool("setup", "knowledgebase_document_status", dict(datapack_id=datapack_id,
+                                                                             conversation_id=cid, document_key=key))
+            state = out.get("state", "unknown") if isinstance(out, dict) else str(out)
+            if state in ("completed", "failed", "abandoned", "oversized"):
+                break
+            time.sleep(3)
+        return state
+
+    # ---------- self-learning ----------
+    def selflearning_status(self, datapack_id, conversation_id) -> dict:
+        """Meko's to-do list for the datapack: how many recent searches found a strong match, and which to fix."""
+        return self._tool("auditor", "selflearning_status", dict(datapack_id=datapack_id,
+                                                                  conversation_id=conversation_id, last="1d"),
+                          "self-learning status")
+
+    def search_log(self, datapack_id, conversation_id, query) -> dict | None:
+        """The newest logged search with exactly this query (Meko writes the log in the background)."""
+        for _ in range(4):
+            out = self._tool("auditor", "selflearning_query_log", dict(datapack_id=datapack_id,
+                                                                        conversation_id=conversation_id, band="all",
+                                                                        last="1d"), "search log")
+            row = next((r for r in out.get("rows", []) if r.get("query") == query), None) \
+                if isinstance(out, dict) else None
+            if row:
+                return row
+            time.sleep(3)
+        return None
+
+    def selflearning_verify(self, datapack_id, conversation_id, log_id) -> dict:
+        """Replay a logged search now, and get its band before and after (the replay counts as a search)."""
+        return self._tool("auditor", "selflearning_verify", dict(datapack_id=datapack_id,
+                                                                  conversation_id=conversation_id, log_id=log_id),
+                          "replay a weak search")
 
     def knowledge_search(self, datapack_id, conversation_id, agent_id, query, limit=5) -> list[Hit]:
         out = self._tool(agent_id, "knowledgebase_search", dict(datapack_id=datapack_id,

@@ -11,11 +11,22 @@ from payee_sentinel.context.local import LocalMeko
 from payee_sentinel.context.meko import MekoClient, MekoError
 from payee_sentinel.evaluate import run, summarize
 from payee_sentinel.scenario import generate, iban_is_valid
+from payee_sentinel.story import CHAPTERS, INVOICES, Story
 
 
 @pytest.fixture(scope="module")
 def world():
     return generate(1)
+
+
+@pytest.fixture(scope="module")
+def story():
+    s = Story(LocalMeko)
+    for ch in CHAPTERS:
+        s.advance()
+        if ch.key == "audit":
+            s.promote("V001")
+    return s
 
 
 def test_world_ibans_are_valid_and_cases_have_events(world):
@@ -90,6 +101,34 @@ def test_evaluation_is_deterministic_and_sharing_never_loses_to_silos():
     assert first["shared"]["stopped"] >= first["siloed"]["stopped"]
 
 
+def test_every_decision_is_traced_with_the_memories_behind_it(story):
+    n_invoices = sum(len(v) for v in INVOICES.values())
+    for mode, lane in story.lanes.items():
+        payments = [d for d in lane.log if d["agent"] == "payments"]
+        assert len(payments) == n_invoices                      # released ones too, not only holds
+        turns = [m for c in lane.store.conversations.values() for m in c["messages"]]
+        assert len(turns) == len(lane.log) and all(m["metadata"]["outcome"] for m in turns)
+        for d in lane.log:
+            assert set(d["memory_ids"]) <= set(lane.store.memories)   # each id is a memory the search returned
+    silo, meko = story.lanes["siloed"], story.lanes["learning2"]
+    applied = [d for d in silo.log if d["what"] == "bank change applied"]
+    assert [d["vendor_id"] for d in applied] == ["V001", "V002"] and silo.first_action == {}
+    block = next(d for d in meko.log if d["vendor_id"] == "V001" and d["outcome"] == "block")
+    assert len(block["memory_ids"]) >= 10 and {"portal", "inbox"} <= {s.agent for s in block["signals"]}
+    assert block["query"] == meko.mem.query("V001")
+
+
+def test_self_learning_loop_fixes_the_weak_search_and_week_two_finds_the_case(story):
+    meko = story.lanes["learning2"]
+    assert meko.asked["V001"]["related"] is None                # week 1: no earlier case to find
+    assert meko.learning["before"]["band"] != "high" and meko.learning["after"]["band"] == "high"
+    assert meko.learning["outcome"] == "improved"
+    assert meko.asked["V002"]["related"] == "Nordwind Logistik GmbH"
+    block = next(d for d in meko.log if d["vendor_id"] == "V002" and d["outcome"] == "block")
+    assert block["related_case"] == "Nordwind Logistik GmbH"
+    assert "siloed" not in [m for m, lane in story.lanes.items() if lane.asked]   # silos have no case history
+
+
 def _sse(rid, result):
     return f"event: message\ndata: {json.dumps({'jsonrpc': '2.0', 'id': rid, 'result': result})}\n\n"
 
@@ -137,6 +176,34 @@ def test_meko_client_speaks_mcp_and_parses_search_results():
     assert (p.id, p.text, p.source) == ("p1", "Signal types: [a, b, c]", "collective")
     with pytest.raises(MekoError, match="conversation_id"):
         client.knowledge_search("dp", "c1", "payments", "policy")
+
+
+def test_meko_client_sends_trace_metadata_as_text_and_keeps_the_search_grade():
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        if body.get("method") == "initialize":
+            return httpx.Response(200, json={"jsonrpc": "2.0", "id": body["id"], "result": {}})
+        if "id" not in body:
+            return httpx.Response(202)
+        name, args = body["params"]["name"], body["params"]["arguments"]
+        if name == "conversation_add_message":
+            assert isinstance(args["metadata"], str) and json.loads(args["metadata"])["outcome"] == "block"
+            payload = {"message_id": "msg1"}
+        else:
+            payload = {"results": {"memory": [], "knowledge_base": [{"id": "k1", "chunk_text": "case file",
+                                                                     "rerank_score": 0.97}],
+                                   "conversation": {"hits": [], "thread": []}},
+                       "match_quality": "mid", "agent_hint": "Partial match: use these results.",
+                       "token_savings": {"tokens_saved": 12400}}
+        return httpx.Response(200, json={"jsonrpc": "2.0", "id": body["id"], "result": {
+            "content": [{"type": "text", "text": json.dumps(payload)}]}})
+
+    client = MekoClient("mko_tkn_test", transport=httpx.MockTransport(handler))
+    assert client.add_message("dp", "c1", "vendor_master", "in", "out", "why", ["a", "b"],
+                              metadata={"outcome": "block", "memory_ids": ["m1"]}) == "msg1"
+    found = client.context_search("dp", "c1", "vendor_master", "earlier case?")
+    assert [h.text for h in found["knowledge_base"]] == ["case file"] and found["memory"] == []
+    assert client.last_search["quality"] == "mid" and client.last_search["token_savings"]["tokens_saved"] == 12400
 
 
 def test_meko_client_refuses_a_missing_key(monkeypatch):
