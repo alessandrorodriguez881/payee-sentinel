@@ -9,7 +9,7 @@ from payee_sentinel.agents import Memory, Signal, pattern_match, risk_of
 from payee_sentinel.context.base import Hit
 from payee_sentinel.context.local import LocalMeko
 from payee_sentinel.context.meko import MekoClient, MekoError
-from payee_sentinel.evaluate import run, summarize
+from payee_sentinel.evaluate import carry_learning, run, run_chain, summarize
 from payee_sentinel.scenario import generate, iban_is_valid
 from payee_sentinel.story import CHAPTERS, INVOICES, Story
 
@@ -99,6 +99,17 @@ def test_evaluation_is_deterministic_and_sharing_never_loses_to_silos():
     again = summarize([run(generate(2), "siloed"), run(generate(2), "shared")])
     assert first == again
     assert first["shared"]["stopped"] >= first["siloed"]["stopped"]
+
+
+def test_round_three_carries_only_the_collective_memory():
+    store = LocalMeko()
+    run(generate(1), "learning2", store)
+    carried = carry_learning(store)
+    promoted = [m["id"] for m in store.memories.values() if m["state"] == "promoted"]
+    assert promoted and list(carried.memories) == promoted        # only promoted memories, in promotion order
+    assert set(carried.datapacks) <= set(store.datapacks)
+    # nothing is promoted in `shared`, so a period in a chain is the same as the world run alone
+    assert summarize([run_chain([1, 2], "shared")[1]]) == summarize([run(generate(2), "shared")])
 
 
 def test_every_decision_is_traced_with_the_memories_behind_it(story):

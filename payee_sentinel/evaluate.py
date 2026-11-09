@@ -311,6 +311,55 @@ def summarize(results: list[RunResult]) -> dict:
     return table
 
 
+def carry_learning(store: LocalMeko) -> LocalMeko:
+    """What a company keeps from one period to the next (round 3): a fresh simulator holding only the collective
+    memory of `store`, i.e. the promoted attack patterns and legitimate look-alikes, in the order they were promoted.
+    Signals, open cases and decisions stay behind."""
+    out = LocalMeko()
+    names = {dp_id: name for name, dp_id in store.datapacks.items()}
+    for m in store.memories.values():
+        if m["state"] == "promoted":
+            out.memories[m["id"]] = dict(m, datapack=out.ensure_datapack(names[m["datapack"]]))
+    out.calls.clear()
+    return out
+
+
+def run_chain(seeds: list[int], mode: str) -> list[RunResult]:
+    """Consecutive six-week periods, one world per seed, that share only their collective memory (round 3)."""
+    store, out = LocalMeko(), []
+    for seed in seeds:
+        out.append(run(generate(seed), mode, store))
+        store = carry_learning(store)
+    return out
+
+
+def summarize_periods(chains: dict[str, list[list[RunResult]]]) -> dict:
+    """Round 3, per mode and period: means over chains. Frictions as in H6 (false-positive holds + legitimate bank
+    changes blocked + wrong freezes); collective memory counted cumulatively, as it is carried."""
+    table = {}
+    for mode, runs in chains.items():
+        rows = []
+        for p in range(len(runs[0])):
+            rs = [chain[p] for chain in runs]
+            stopped = [a for r in rs for a in r.attacks if a.stopped]
+            rows.append(dict(
+                period=p + 1, attacks=sum(len(r.attacks) for r in rs), stopped=len(stopped),
+                early=sum(a.stage == "early" for a in stopped),
+                frictions=round(statistics.mean(r.fp_holds + r.blocked_legit_changes + r.false_freezes for r in rs), 2),
+                false_freezes=round(statistics.mean(r.false_freezes for r in rs), 2),
+                fp_holds=round(statistics.mean(r.fp_holds for r in rs), 2),
+                blocked_legit_changes=round(statistics.mean(r.blocked_legit_changes for r in rs), 2),
+                fp_step_ups=round(statistics.mean(r.fp_step_ups for r in rs), 2),
+                mean_hours_before_target=round(statistics.mean([a.hours_before_target or 0 for a in stopped]), 1)
+                if stopped else None,
+                patterns_in_memory=round(statistics.mean(sum(x.patterns_promoted for x in chain[:p + 1])
+                                                         for chain in runs), 2),
+                legit_in_memory=round(statistics.mean(sum(x.legit_promoted for x in chain[:p + 1])
+                                                      for chain in runs), 2)))
+        table[mode] = rows
+    return table
+
+
 def _seeds(text: str) -> list[int]:
     out = []
     for part in text.split(","):
@@ -324,7 +373,20 @@ def main() -> None:
     ap.add_argument("--seeds", default="1-5")
     ap.add_argument("--modes", default=",".join(MODES))
     ap.add_argument("--out", default="")
+    ap.add_argument("--chains", default="", help="round 3: comma-separated seed ranges, one chain each, e.g. 1-4,11-14")
     args = ap.parse_args()
+    if args.chains:
+        chains = {m: [run_chain(_seeds(part), m) for part in args.chains.split(",")] for m in args.modes.split(",")}
+        table = summarize_periods(chains)
+        for mode, rows in table.items():
+            for row in rows:
+                print(mode.ljust(9), json.dumps(row))
+        if args.out:
+            Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.out).write_text(json.dumps(dict(summary=table, chains={m: [[dict(
+                asdict(r), stopped=r.stopped, early=r.early, loss=r.loss) for r in chain] for chain in runs]
+                for m, runs in chains.items()}), indent=1, default=str))
+        return
     results = [run(generate(s), m) for s in _seeds(args.seeds) for m in args.modes.split(",")]
     table = summarize(results)
     for mode, row in table.items():
