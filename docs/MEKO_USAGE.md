@@ -27,7 +27,7 @@ self-learning ones were found by listing the server's tools; their descriptions 
 | Meko feature | Status | Planned use |
 |---|---|---|
 | `track_token_usage` | Works (`docs/MEKO_SMOKE.md`) | Once Claude reads the emails and writes the explanations |
-| **AMP: Postgres inside a datapack** (`amp_cluster_create`, `amp_compute_create`, `amp_branch_*`, `amp_core_budget`) | Read only: the Free tier allows 0.5 vCPU across datapacks, none used, no cluster yet | The payment ledger and the vendor master as a real Postgres database next to the context ("Postgres inside the context", in the judging notes). Creating one returns a database password once and needs a public address with an IP allow-list, so it waits for Alessandro's decision |
+| **AMP: Postgres inside a datapack** (`amp_core_budget`, `amp_cluster_create`, `amp_branch_list`, `amp_compute_list`) | **Created on 9-Nov-2026** with Alessandro's yes: cluster `payee-ledger` in `sentinel-audit`, PostgreSQL 18.2, one writer endpoint of 0.5 vCPU and 4 GiB (the Free tier's whole budget), reachable over SSL from one IP address only (a /32 allow-list, chosen at creation). The password was returned once and went straight into `.env`; connection checked | The payment ledger and the vendor master's history as a real Postgres database next to the context ("Postgres inside the context", in the judging notes): not used by the agents yet |
 
 ## What we learned about Meko along the way
 The live service and the offline simulator behave the same for everything above (`docs/MEKO_SMOKE.md`):
