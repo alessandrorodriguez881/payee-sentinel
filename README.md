@@ -5,9 +5,10 @@ takeover is stopped before the money leaves. Built for ContextCon: Remember Ever
 Attacker").
 
 > **Status, 9 Nov 2026: work in progress.** The synthetic world, the agents, the measurement (two rounds) and a first
-> demo screen exist. The demo runs offline or on real Meko: on a clean service the whole story took 73 s with the same
-> outcome as offline, but in nine rehearsals in a row right after it, the Meko lane stopped finding its own new memories
-> (`docs/MEKO_SMOKE.md`). Still to come: Claude reading the emails, the video and a public demo link.
+> demo screen exist. The demo runs offline or on real Meko: on empty datapacks the whole story took 73 s with the same
+> outcome as offline, but once earlier runs fill the datapacks, their near-identical memories outrank a new run's and
+> the Meko lane misses its own signals (`docs/MEKO_SMOKE.md`). Still to come: Claude reading the emails, the video and
+> a public demo link.
 
 ## The idea
 A vendor takeover arrives in pieces: a password reset on the supplier portal from a new device, a changed contact
@@ -48,11 +49,14 @@ Without a `MEKO_API_KEY` everything runs on the offline simulator (`payee_sentin
 `.env` (see `.env.example`), `python scripts/meko_smoke.py` checks every Meko feature used here against the real service.
 
 ## How Meko is used
-Datapacks, per-agent conversations, decisions saved with their reasoning, memory with metadata, hybrid search,
-promotion by a person, collective memory, the knowledge base (the company's payment policy, quoted by the auditor)
-and artifacts (one report per case) are used by the agents; token tracking and `context_search` work against the live
-service but are not used by the agents yet. Feature by feature, with the code that uses each:
-`docs/MEKO_USAGE.md`. What the live service actually returned: `docs/MEKO_SMOKE.md`.
+Datapacks, per-agent conversations, decision traces for every decision (allow included, each with the query and the
+memories behind it), memory with metadata, hybrid search, promotion by a person, collective memory, the knowledge base
+(the company's payment policy, quoted by the auditor, and confirmed case files), artifacts (one report per case),
+`context_search`, and Meko's self-learning loop: Meko grades each open question an agent asks it, the auditor adds
+the missing context after a confirmed case, and Meko replays the weak question to check the fix. Token tracking works
+against the live service but is not used by the agents yet. Feature by feature, with the code that uses each:
+`docs/MEKO_USAGE.md`. Five decisions explained from their traces: `docs/TRACES.md`. What the live service actually
+returned: `docs/MEKO_SMOKE.md`.
 
 ## Honest notes
 - All data is invented. IBANs have valid check digits around random account numbers.

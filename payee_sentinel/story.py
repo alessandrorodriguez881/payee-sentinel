@@ -263,6 +263,9 @@ class Lane:
         case = next((h for h in found["knowledge_base"] if CASE_TITLE in h.text), None)
         related = next((v.name for v in VENDORS.values() if case and v.name in case.text), None)
         self.asked[e.vendor_id] = dict(query=q, quality=quality, related=related, at=e.ts)
+        if related == VENDORS[e.vendor_id].name:       # only on real Meko, after an earlier demo run's audit
+            return (f"Asked Meko whether this account or device appeared in an earlier case: **this vendor's case is "
+                    f"already in Meko** from an earlier demo run on the same datapacks (match {quality})")
         if related:
             return (f"Asked Meko whether this account or device appeared in an earlier case: **confirmed case found, "
                     f"{related}** (Meko rates the match {quality})")

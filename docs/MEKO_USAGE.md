@@ -10,19 +10,24 @@ plainly which features are not used by the agents yet.
 |---|---|---|
 | **Datapacks** (REST `POST /datapacks`) | Four separate datapacks, as theme 03 suggests: `sentinel-signals` (raw risk signals and the analyst's resolutions), `sentinel-patterns` (attack patterns a person approved), `sentinel-legit` (legitimate look-alikes a person confirmed), `sentinel-audit` (decision records) | `agents.py`, `Memory.__init__` |
 | **Conversations** (`conversation_create`) | One conversation per agent; the payments agent starts a new one at every payment run, so it begins with no history and must find what matters in memory | `Memory.conversation`, `Memory.new_session`, `story.py` `run_payments` |
-| **Decisions with reasoning** (`conversation_add_message` with `reasoning` and `plan`) | Every protective decision (bank change blocked, vendor frozen, payment held) is saved as a turn with its reasoning and plan, which Meko's documentation says its portal shows as a decision trace (we have not opened that view yet) | `story.py`, `Lane._decision` |
+| **Decision traces** (`conversation_add_message` with `reasoning`, `plan` and `metadata`) | Every decision, allow included (a bank change applied, a payment released, a step-up call, a hold, a block, a freeze), is saved as a turn with its reasoning, its plan and the retrieval behind it: the query the agent ran, the datapack and the ids of the memories it found. Meko's documentation says its portal shows these turns as decision traces (we have not opened that view yet). Walkthroughs of five decisions: `docs/TRACES.md` | `story.py`, `Lane._decision`; `scripts/trace_walkthroughs.py` |
 | **Memory** (`memory_add` with JSON metadata) | Each risk signal an agent sees (type, vendor, time, weight, evidence) — the core of the shared memory; the analyst's verdicts ("attack confirmed", "legitimate"), so closed cases stop raising alarms; decision records, so the auditor can find them later; pattern candidates | `Memory.write`, `Memory.resolve`, `Memory.record_decision`, `evaluate.py`, `story.py` |
 | **Memory search** (`memory_search`, hybrid) | Before every bank-change and payment decision an agent searches the vendor's signals from all agents; the auditor searches decision records and signals to explain a case | `Memory.signals`, `Memory.history`, `Memory.decisions` |
 | **Learnings and promotion** (REST `POST /promote-memories`) | After a confirmed attack the auditor writes a pattern candidate; a person presses "Promote" and it becomes collective memory. In learning v2, legitimate look-alikes a person confirms are promoted the same way | `story.py` `Story.promote`, `evaluate.py`, `context/meko.py` |
 | **Collective memory** (`memory_get_all` with `promoted=True`) | Before acting, agents check approved patterns; a match freezes a vendor's bank details before anyone asks to change them | `Memory.patterns`, `Memory.legit_patterns`, `Agent._check_patterns` |
 | **Knowledge base** (`knowledgebase_upload_document`, `knowledgebase_search`) | The company's payment policy and fraud playbook (`payee_sentinel/knowledge/`, invented) are uploaded to `sentinel-patterns` when the demo starts; the auditor quotes the passage behind the rule it explains | `story.py`, `Story.__init__`, `Story.explain` |
 | **Artifacts** (`artifact_put`) | The auditor keeps each case report as an artifact in `sentinel-audit` (content-addressed: the same report gives the same hash) | `story.py`, `Story._save_report` |
+| **Context search** (`context_search`) | When a bank-change request arrives, the vendor-master agent asks Meko in plain words whether the new account or device appeared in an earlier confirmed case, across memory, knowledge base and past conversations at once. Meko answers with a grade (`match_quality`: high, mid or low) and a hint for the agent; the answer goes into the decision's trace, while the decision stays with the rules | `story.py`, `Lane._ask_about_request` |
+| **Self-learning loop** (`selflearning_status`, `selflearning_query_log`, `selflearning_verify`) | Meko logs and grades every `context_search`. Once a case is confirmed, the auditor agent reads Meko's list of weak searches, adds what was missing (the confirmed case file, to the knowledge base) and asks Meko to replay the weak search: on real Meko, mid → high. The next week, the same question about another vendor finds the case | `story.py`, `Story.self_learning`, `Story._case_file` |
+
+These tools are on the live MCP server (57 tools on 9-Nov-2026, against 28 in the documentation we read on 8-Nov). The
+self-learning ones were found by listing the server's tools; their descriptions say only `context_search` calls count.
 
 ## Checked against the live service, not used by the agents yet
 | Meko feature | Status | Planned use |
 |---|---|---|
 | `track_token_usage` | Works (`docs/MEKO_SMOKE.md`) | Once Claude reads the emails and writes the explanations |
-| `context_search` | Works, returns Meko's own `token_savings` | The auditor's single search across memory, knowledge and conversations |
+| **AMP: Postgres inside a datapack** (`amp_cluster_create`, `amp_compute_create`, `amp_branch_*`, `amp_core_budget`) | Read only: the Free tier allows 0.5 vCPU across datapacks, none used, no cluster yet | The payment ledger and the vendor master as a real Postgres database next to the context ("Postgres inside the context", in the judging notes). Creating one returns a database password once and needs a public address with an IP allow-list, so it waits for Alessandro's decision |
 
 ## What we learned about Meko along the way
 The live service and the offline simulator behave the same for everything above (`docs/MEKO_SMOKE.md`):
@@ -32,4 +37,8 @@ The live service and the offline simulator behave the same for everything above 
   LLM — and one was rewritten wrongly — so signals are always written explicitly;
 - the whole demo story ran on real Meko in about a minute and reached the same decisions as offline — on a clean,
   quiet service. In nine rehearsals in a row right after it, new memories did not show up in searches in time, and
-  the Meko lane lost like the siloed one. That is open (`docs/MEKO_SMOKE.md`).
+  the Meko lane lost like the siloed one. The cause, as far as we can measure it: a new memory is searchable at once,
+  but for hours its score is about half its similarity, so near-identical copies from earlier runs outrank it
+  (`docs/MEKO_SMOKE.md`). On empty datapacks this does not matter;
+- what Meko learns stays learned: once a case file is in `sentinel-patterns`, a later demo run finds it in week 1
+  too. A recording therefore needs a clean set of datapacks (clearing them deletes data, so it is Alessandro's call).
