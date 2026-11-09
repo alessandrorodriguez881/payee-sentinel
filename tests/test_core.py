@@ -10,6 +10,7 @@ from payee_sentinel.agents import Memory, Signal, pattern_match, risk_of
 from payee_sentinel.context.base import Hit
 from payee_sentinel.context.local import LocalMeko
 from payee_sentinel.context.meko import MekoClient, MekoError
+from payee_sentinel.context.replay import Recorder, Replayer, ReplayMismatch
 from payee_sentinel.evaluate import carry_learning, run, run_chain, summarize
 from payee_sentinel.scenario import generate, iban_is_valid
 from payee_sentinel.scenario import Event, make_iban
@@ -148,6 +149,35 @@ def test_self_learning_loop_fixes_the_weak_search_and_week_two_finds_a_similar_c
                   dict(via="portal", new_iban=make_iban(random.Random(1), "DE"),
                        holder=VENDORS["V005"].name, device="dev-000000", country="FR"))
     assert "nothing specific" in meko._ask_about_request(other) and meko.asked["V005"]["related"] is None
+
+
+def test_a_recorded_run_replays_exactly_and_stops_when_it_goes_off_script(tmp_path):
+    rec = Recorder(LocalMeko(), "simulator")
+    first = Story(lambda: rec)
+    for ch in CHAPTERS:
+        first.advance()
+        if ch.key == "audit":
+            first.promote("V001")
+    path = rec.save(tmp_path / "run.json", first.run_id)
+    raw = path.read_text(encoding="utf-8")
+    assert "user_email" not in raw and "user_name" not in raw          # only parsed results are kept
+
+    replay = Replayer(path)
+    again = Story(lambda: replay, run_id=replay.run_id)
+    for ch in CHAPTERS:
+        again.advance()
+        if ch.key == "audit":
+            again.promote("V001")
+    meko_a, meko_b = first.lanes["learning2"], again.lanes["learning2"]
+    assert again.summary()["learning2"]["lost"] == first.summary()["learning2"]["lost"] == 0
+    assert [(d["what"], d["outcome"], d["risk"], d["memory_ids"]) for d in meko_b.log] == \
+        [(d["what"], d["outcome"], d["risk"], d["memory_ids"]) for d in meko_a.log]
+    assert meko_b.learning == meko_a.learning and len(replay.calls) == len(rec.inner.calls)
+
+    off = Story(lambda: Replayer(path), run_id=replay.run_id)
+    with pytest.raises(ReplayMismatch):
+        for ch in CHAPTERS:                                         # no promotion this time: week 2 differs
+            off.advance()
 
 
 def test_a_denied_callback_is_traced_as_a_rejection_without_an_older_search():

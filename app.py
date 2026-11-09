@@ -12,22 +12,29 @@ import streamlit as st
 
 from payee_sentinel.context import load_env
 from payee_sentinel.context.local import LocalMeko
+from payee_sentinel.context.replay import Replayer, ReplayMismatch, latest_recording
 from payee_sentinel.story import AGENT_NAMES, BUYER, CHAPTERS, LANES, RUNS, VENDORS, Story
 
 st.set_page_config(page_title="Payee Sentinel", page_icon=":material/shield_lock:", layout="wide")
 
 load_env()
 HAS_KEY = os.environ.get("MEKO_API_KEY", "").startswith("mko_tkn_")
+RECORDING = latest_recording()
+SIMULATOR, REPLAY, LIVE = "Offline simulator", "Replay of a recorded run", "Real Meko, live"
+ENGINES = [SIMULATOR] + ([REPLAY] if RECORDING else []) + ([LIVE] if HAS_KEY else [])
 TARGET_RUN = {"V001": RUNS["run1"], "V002": RUNS["run2"]}
 ALERT = {"good": st.success, "bad": st.error, "warn": st.warning, "neutral": st.info}
 ICON = {"good": ":material/verified_user:", "bad": ":material/money_off:", "warn": ":material/schedule:",
         "neutral": ":material/info:"}
 
 
-def new_story(real: bool) -> Story:
-    if real:
+def new_story(engine: str) -> Story:
+    if engine == LIVE:
         from payee_sentinel.context.meko import MekoClient
         return Story(MekoClient)
+    if engine == REPLAY:
+        replay = Replayer(RECORDING)
+        return Story(lambda: replay, run_id=replay.run_id)
     return Story(LocalMeko)
 
 
@@ -37,10 +44,11 @@ def money(x: float) -> str:
 
 ss = st.session_state
 if "story" not in ss:
-    ss.real = False
-    ss.story = new_story(False)
+    ss.engine = SIMULATOR
+    ss.story = new_story(SIMULATOR)
 story: Story = ss.story
 meko_lane = story.lanes["learning2"]
+replaying = isinstance(meko_lane.store, Replayer)
 
 
 def promote_pattern() -> None:
@@ -53,28 +61,40 @@ with st.sidebar:
     st.caption("Accounts-payable agents that share what they see through Meko, so a vendor-account takeover is "
                "stopped before the money leaves.")
     nxt = story.next_chapter
-    waiting = (story.done and story.done[-1][0].kind == "audit"
-               and not meko_lane.candidates.get("V001", {}).get("promoted", True))
+    waiting = bool(story.done and story.done[-1][0].kind == "audit"
+                   and not meko_lane.candidates.get("V001", {}).get("promoted", True))
     st.progress(len(story.done) / len(CHAPTERS), text=f"Step {len(story.done)} of {len(CHAPTERS)}")
     clicked = st.button(f"Next: {nxt.title}" if nxt else "End of the story", type="secondary" if waiting else "primary",
-                        disabled=nxt is None, width="stretch", icon=":material/play_arrow:")
+                        disabled=nxt is None or (replaying and waiting), width="stretch", icon=":material/play_arrow:")
+    if replaying and waiting:
+        st.caption("In the recorded run a person promoted the pattern here: press Promote to go on.")
     restart = st.button("Start again", width="stretch", icon=":material/restart_alt:")
-    real = st.toggle("Use real Meko", value=ss.real, disabled=not HAS_KEY,
-                     help="On empty datapacks the whole story took 73 s on real Meko with the same outcome. After "
-                          "earlier runs, their near-identical memories outrank a new run's, and the Meko lane misses "
-                          "its own signals (docs/MEKO_SMOKE.md). Off: an offline simulator with the same rules.")
-    st.caption((":material/cloud: Real Meko, mcp.mekodata.ai" if ss.real else
+    engine = ss.engine
+    if len(ENGINES) > 1:
+        engine = st.radio("Context engine", ENGINES, index=ENGINES.index(ss.engine),
+                          help="Offline simulator: the same rules, no key. Replay: the answers real Meko gave in one "
+                               "recorded run, in the same order and with their timings. Real Meko, live: reliable "
+                               "only on empty datapacks; after earlier runs, their near-identical memories outrank a "
+                               "new run's (docs/MEKO_SMOKE.md).")
+    st.caption((f":material/replay: Replay of a {meko_lane.store.engine} run recorded "
+                f"{meko_lane.store.recorded_at[:10]}" if replaying else
+                ":material/cloud: Real Meko, mcp.mekodata.ai" if ss.engine == LIVE else
                 ":material/computer: Offline simulator of Meko") + " · all data is invented")
 
-if real != ss.real or restart:
-    ss.real = real
-    with st.status("Setting up the datapacks…" if real else "Starting again…"):
-        ss.story = new_story(real)
+if engine != ss.engine or restart:
+    ss.engine = engine
+    with st.status("Setting up the datapacks…" if engine == LIVE else "Starting again…"):
+        ss.story = new_story(engine)
     st.rerun()
 
 if clicked and nxt:
     with st.status(f"Agents at work: {nxt.title}") as status:
-        story.advance()
+        try:
+            story.advance()
+        except ReplayMismatch as exc:
+            status.update(label="The replay went off script", state="error")
+            st.error(f"{exc}. Press Start again.", icon=":material/error:")
+            st.stop()
         status.update(label="Done", state="complete")
     st.rerun()
 
@@ -213,7 +233,9 @@ with meko_tab:
                              hide_index=True, alt="The memories behind the decision")
     st.markdown("**Every call to Meko**")
     st.caption("Newest first. Each decision is saved twice: as a conversation turn with its reasoning, and as a "
-               "decision record the auditor agent searches when it explains a case.")
+               "decision record the auditor agent searches when it explains a case."
+               + (f" Replayed from the {meko_lane.store.engine} run recorded on {meko_lane.store.recorded_at[:10]}: "
+                  f"times and latencies are the recorded ones." if replaying else ""))
     st.dataframe([dict(time=datetime.fromisoformat(c.at).astimezone().strftime("%H:%M:%S"),
                        agent=AGENT_NAMES.get(c.agent_id, c.agent_id), call=c.tool,
                        datapack=dp_name.get(c.datapack, c.datapack), what=c.summary,
