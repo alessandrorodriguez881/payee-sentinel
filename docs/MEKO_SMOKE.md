@@ -50,9 +50,15 @@ What three more probes showed:
   minutes, new memories were not being indexed in time. Search latency rose from about 2 s to about 11 s at the same time.
 - `memory_search` with `run_id` set returned nothing.
 
-So the real-Meko demo is reliable on a clean, quiet service (run 1), not yet under repeated rehearsals. Open: search
-for those three memories again later (late indexing or never indexed?), ask Meko about indexing delays, and decide with
-Alessandro whether to clear the demo datapacks before recording (that deletes data, so it is his call).
+Checked again at 01:42, 25 minutes later: the memories written by rehearsals 2-10 now do appear in searches, so they
+were indexed, only too late for the run that needed them. The three probe memories written at 01:14 still did not
+appear, and a search still took about 12 s.
+
+So the real-Meko demo is reliable on a clean, quiet service (run 1), not under rehearsals run back to back: under that
+load, new memories became searchable minutes (or more) after they were written. Open: ask Meko about indexing delays,
+leave time between rehearsals, record with one clean pass, and decide with Alessandro whether to clear the demo
+datapacks before recording (that deletes data, so it is his call). For the product, it means an agent cannot assume
+that what another agent wrote a few seconds ago is already searchable.
 
 ## Consequences for the plan
 - A full six-week world on real Meko means hundreds of searches: minutes at best, hours at the first tests' latency,
