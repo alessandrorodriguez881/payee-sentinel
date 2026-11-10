@@ -116,6 +116,46 @@ of view. That is part of the system as built, and it is measured as it is (E3 re
 (1-10) uses seeds 3*k*1-3*k*4" does not give the seeds it lists. The listed seeds, 301-304, 311-314, ..., 391-394
 (chain *k* = 0-9 uses 300 + 10*k* + 1 to 300 + 10*k* + 4), are the ones that ran.
 
+## Round 4: a fair comparison, with best practices in every lane (written 2026-11-10, ~15:40 CET, before any code)
+An adversarial review (10-Nov) called the comparison a straw man: the siloed agents have neither Verification of
+Payee, mandatory for euro credit transfers in the EU since 9 October 2025, nor a callback that follows the payment
+policy. It also asked what Meko adds over a plain shared SQL table. Round 4 gives every lane the same best practices and
+adds that table as a lane of its own.
+
+**Best practices, in all three lanes.**
+- *Verification of Payee (VoP)* when a bank-change request arrives. The receiving bank compares the claimed holder with
+  the account's real holder. The world gets a hidden outcome per request: an attacker's mule account gives `no_match`;
+  the careful attacker (`careful_mailbox`, an account in the vendor's own name) gives `match`; a legitimate change gives
+  `match`, or `close_match` in 10 % of cases (a trading name). Non-euro IBANs (PL) give no VoP result. New signal types,
+  with weights fixed now by judgement: `bank.vop_no_match` +6 and `bank.vop_close_match` +2. Both are written by the
+  vendor-master agent, so silos see them too.
+- *Policy callback:* the clerk calls the number that was on file 60 days before the request, as the payment policy
+  says, with probability 0.7 per callback (fixed now; 0.5 and 0.9 are reported as exploratory). When the clerk does, the
+  real vendor answers: an attack is denied and a legitimate change is confirmed. When the clerk does not, the callback
+  happens as in rounds 1-3.
+- Both draws come from a random stream of their own (seeded by the world's seed), so the worlds of rounds 1-3, and
+  their results, do not change.
+
+**Lanes.** `siloed+bp` (each agent reads only its own signals); `shared+bp`, a shared table (every agent writes to one
+table and reads a vendor's rows before deciding: exact lookup by vendor, no promotion, no learning, no recall of other
+cases; the simulator's `shared` mode is exactly that); `learning2+bp` (Meko: shared memory plus the collective memory a
+person approves). `siloed` without best practices is run as a reference.
+
+**Design.** As round 3: ten chains of four six-week periods that carry only the promoted collective memory; seeds
+501-504, 511-514, ..., 591-594 (chain *k* = 0-9 uses 500 + 10*k* + 1 to 500 + 10*k* + 4), never run before. Development
+seeds 1-4 may be used to check the code. The confirmation chains are run once.
+
+- **H12, best practices matter.** Over all 40 chain-periods, `siloed+bp` stops more attacks than `siloed`.
+- **H13, sharing still adds to best practices.** `shared+bp` stops more attacks than `siloed+bp` in total, and fewer in
+  no chain-period.
+- **H14, what Meko adds over a shared table.** In periods 2-4, on attacks both lanes stop, `learning2+bp` acts at least
+  24 hours earlier on average than `shared+bp`, and its frictions (false-positive holds + legitimate bank changes
+  blocked + wrong freezes) are at most those of `shared+bp` + 0.5 per period.
+- **E4 (exploratory).** What each best practice stops on its own; the careful attacker; frictions from VoP close
+  matches; callback compliance of 0.5 and 0.9 for `siloed+bp` and `shared+bp`.
+
+If H13 or H14 fails, the README and the video say so: the claim then becomes what the data supports.
+
 ## Known limits, stated now
 - The same author wrote the world and the agents, so the agents may "play at home". To push against that, every
   attack kind has variants that remove signals (a VPN in the vendor's own country, no failed logins, the clerk
