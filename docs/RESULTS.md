@@ -159,8 +159,8 @@ Attacks stopped before any bank-change request was even sent, in companies 2 and
   attackers change accounts, phones and devices.
 - **H17 holds.** The consortium's frictions are 3.97-4.00 per period, slightly fewer than companies alone (4.10-4.17).
 - **E5 (exploratory).** Attacks stopped in all: 238-240 of 240 in every lane, because best practices already stop
-  nearly all of them; what the network changes is how early. Money lost: €62,840 in most cells (one careful attack and
-  one contained), €0 at *r* = 0.25, and at *r* = 1 €0 with the blacklist or the consortium against €55,661 alone.
+  nearly all of them; what the network changes is how early. Money lost: €62,840 in most cells (two attacks by the careful attacker,
+  neither stopped: €7,179 and €55,661), €0 at *r* = 0.25, and at *r* = 1 €0 with the blacklist or the consortium against €55,661 alone.
 
 ## What this means for the product
 - **Between companies, the network acts before the attacker asks** (round 5): with a consortium, 89-122 of 160 attacks in the next companies are stopped before any bank-change request, against 36 for companies alone, with no more friction.
