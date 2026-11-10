@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timedelta
 import json
 from pathlib import Path
@@ -83,7 +83,9 @@ def _target_run(world: World, request_ts: datetime) -> datetime:
     return next((r for r in world.payment_runs if r > request_ts), world.payment_runs[-1] + timedelta(weeks=1))
 
 
-def run(world: World, mode: str, store=None) -> RunResult:
+def run(world: World, mode: str, store=None, best_practices: bool = False, compliance: float = 0.7) -> RunResult:
+    """With `best_practices` (round 4), every lane gets Verification of Payee on bank-change requests and a callback
+    that follows the payment policy (the number on file 60 days earlier) with probability `compliance`."""
     store = store or LocalMeko()
     mem = Memory(store, mode, world.vendors)
     portal, support, inbox = PortalAgent(mem), SupportAgent(mem), InboxAgent(mem)
@@ -98,7 +100,7 @@ def run(world: World, mode: str, store=None) -> RunResult:
     for a in world.attacks:
         req = next(e for e in world.events if e.attack_id == a.id and e.kind == "bank_change_request")
         targets[a.id] = _target_run(world, req.ts)
-    out = RunResult(world.seed, mode, list(results.values()))
+    out = RunResult(world.seed, mode + ("+bp" if best_practices else ""), list(results.values()))
 
     current = {v.id: v.iban for v in world.vendors.values()}
     changed_at: dict[str, datetime | None] = {v.id: None for v in world.vendors.values()}
@@ -206,12 +208,24 @@ def run(world: World, mode: str, store=None) -> RunResult:
                         phishing[e.vendor_id] = e.ts
             elif e.channel == "vendor_master":
                 before = len(vm.actions)
+                if best_practices and e.kind == "callback" and world.policy_draw.get(e.id, 1.0) < compliance:
+                    # the clerk follows the policy: the number on file 60 days earlier reaches the real vendor
+                    e = replace(e, data={**e.data, "phone": world.vendors[e.vendor_id].phone, "phone_source": "policy",
+                                         "result": "denied" if e.attack_id else "confirmed"})
                 if e.kind == "bank_change_request" and e.data["via"] == "email" and \
                         e.ts - phishing.get(e.vendor_id, datetime.min) <= timedelta(hours=1):
                     vm.rejected.add(e.id)
                     vm.actions.append(Action(e.ts, "inbox", "reject_bank_change", e.vendor_id, 0,
                                              ["phishing email"], e.id))
                 vm.on_event(e)
+                if best_practices and e.kind == "bank_change_request" and e.id not in vm.rejected:
+                    outcome = world.vop.get(e.id)
+                    if outcome == "no_match":
+                        vm.emit(e, "bank.vop_no_match", "Verification of Payee: the account holder does not match "
+                                                          "the vendor's name.")
+                    elif outcome == "close_match":
+                        vm.emit(e, "bank.vop_close_match", "Verification of Payee: the account holder's name only "
+                                                             "nearly matches the vendor's.")
                 apply_vm_outcome(e, before)
             elif e.channel == "invoices" and datetime.fromisoformat(e.data["due"]) >= START:
                 pending.append(e)
@@ -324,11 +338,11 @@ def carry_learning(store: LocalMeko) -> LocalMeko:
     return out
 
 
-def run_chain(seeds: list[int], mode: str) -> list[RunResult]:
+def run_chain(seeds: list[int], mode: str, best_practices: bool = False, compliance: float = 0.7) -> list[RunResult]:
     """Consecutive six-week periods, one world per seed, that share only their collective memory (round 3)."""
     store, out = LocalMeko(), []
     for seed in seeds:
-        out.append(run(generate(seed), mode, store))
+        out.append(run(generate(seed), mode, store, best_practices, compliance))
         store = carry_learning(store)
     return out
 
@@ -374,9 +388,14 @@ def main() -> None:
     ap.add_argument("--modes", default=",".join(MODES))
     ap.add_argument("--out", default="")
     ap.add_argument("--chains", default="", help="round 3: comma-separated seed ranges, one chain each, e.g. 1-4,11-14")
+    ap.add_argument("--best-practices", action="store_true", help="round 4: VoP and policy callbacks in every lane")
+    ap.add_argument("--compliance", type=float, default=0.7, help="round 4: share of callbacks that follow the policy")
     args = ap.parse_args()
     if args.chains:
-        chains = {m: [run_chain(_seeds(part), m) for part in args.chains.split(",")] for m in args.modes.split(",")}
+        chains = {m + ("+bp" if args.best_practices else ""): [run_chain(_seeds(part), m, args.best_practices,
+                                                                          args.compliance)
+                                                                for part in args.chains.split(",")]
+                  for m in args.modes.split(",")}
         table = summarize_periods(chains)
         for mode, rows in table.items():
             for row in rows:
@@ -387,7 +406,8 @@ def main() -> None:
                 asdict(r), stopped=r.stopped, early=r.early, loss=r.loss) for r in chain] for chain in runs]
                 for m, runs in chains.items()}), indent=1, default=str))
         return
-    results = [run(generate(s), m) for s in _seeds(args.seeds) for m in args.modes.split(",")]
+    results = [run(generate(s), m, None, args.best_practices, args.compliance) for s in _seeds(args.seeds)
+               for m in args.modes.split(",")]
     table = summarize(results)
     for mode, row in table.items():
         print(mode.ljust(9), json.dumps(row))

@@ -105,6 +105,20 @@ def test_evaluation_is_deterministic_and_sharing_never_loses_to_silos():
     assert first["shared"]["stopped"] >= first["siloed"]["stopped"]
 
 
+def test_round_four_best_practices_come_from_their_own_stream(world):
+    assert set(world.vop.values()) <= {"match", "close_match", "no_match", "unavailable"}
+    requests = {e.id: e for e in world.events if e.kind == "bank_change_request"}
+    assert set(world.vop) == set(requests) and len(world.policy_draw) == sum(e.kind == "callback" for e in world.events)
+    kinds = {c.id: c.kind for c in world.attacks}
+    for rid, outcome in world.vop.items():
+        e = requests[rid]
+        if e.attack_id and not e.data["new_iban"].startswith("PL"):
+            assert outcome == ("match" if kinds[e.attack_id] == "careful_mailbox" else "no_match")
+    plain, bp = run(world, "siloed"), run(world, "siloed", best_practices=True)
+    assert bp.mode == "siloed+bp" and bp.stopped >= plain.stopped
+    assert run(world, "siloed", best_practices=True, compliance=0.0).stopped <= bp.stopped
+
+
 def test_round_three_carries_only_the_collective_memory():
     store = LocalMeko()
     run(generate(1), "learning2", store)

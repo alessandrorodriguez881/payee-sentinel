@@ -96,6 +96,10 @@ class World:
     events: list[Event]
     attacks: list[Case]
     benign: list[Case]
+    # round 4 (best practices): Verification of Payee per bank-change request, and one uniform draw per callback
+    # (the clerk follows the payment policy when the draw is under the compliance rate)
+    vop: dict[str, str] = field(default_factory=dict)
+    policy_draw: dict[str, float] = field(default_factory=dict)
 
     @property
     def payment_runs(self) -> list[datetime]:
@@ -437,7 +441,20 @@ def generate(seed: int = 7, n_vendors: int = 60, n_attacks: int = 8, n_benign: i
         _benign(b, vendors[case.vendor_id], kind, case, day)
         benign.append(case)
     events = sorted(b.events, key=lambda e: (e.ts, e.id))
-    return World(seed, vendors, events, attacks, benign)
+    # best practices (round 4) come from a random stream of their own, so the events above stay as in rounds 1-3
+    bp, kinds = random.Random(f"best-practices-{seed}"), {c.id: c.kind for c in attacks}
+    vop, draws = {}, {}
+    for e in events:
+        if e.kind == "bank_change_request":
+            if e.data["new_iban"].startswith("PL"):
+                vop[e.id] = "unavailable"          # VoP covers euro credit transfers
+            elif e.attack_id:                       # a mule account, or the careful attacker's own-name account
+                vop[e.id] = "match" if kinds.get(e.attack_id) == "careful_mailbox" else "no_match"
+            else:
+                vop[e.id] = "close_match" if bp.random() < 0.10 else "match"
+        elif e.kind == "callback":
+            draws[e.id] = bp.random()
+    return World(seed, vendors, events, attacks, benign, vop, draws)
 
 
 if __name__ == "__main__":

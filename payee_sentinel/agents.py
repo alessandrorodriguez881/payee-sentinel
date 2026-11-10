@@ -50,6 +50,8 @@ WEIGHTS = {
     "bank.callback_to_unverified_number": 3,
     "bank.callback_to_recently_changed_phone": 4,
     "bank.callback_denied": 6,
+    "bank.vop_no_match": 6,           # round 4: Verification of Payee, fixed on 10-nov before any run
+    "bank.vop_close_match": 2,
     "pattern.match": 4,
     "pay.recent_bank_change": 1,
     "pay.first_payment_new_iban": 1,
@@ -455,7 +457,7 @@ class VendorMasterAgent(Agent):
             self.actions.append(Action(e.ts, self.name, "reject_bank_change", v.id, WEIGHTS["bank.callback_denied"],
                                        ["bank.callback_denied"], req.id))
             return
-        if e.data["phone_source"] not in ("master", "none"):   # "none": the clerk skipped the callback
+        if e.data["phone_source"] not in ("master", "none", "policy"):   # "none": skipped; "policy": on file 60 days ago
             self.emit(e, "bank.callback_to_unverified_number",
                       f"The callback went to {e.data['phone']}, a number taken from the request itself.")
         changed = [s for s in self.mem.signals(self.name, v.id, e.ts)
