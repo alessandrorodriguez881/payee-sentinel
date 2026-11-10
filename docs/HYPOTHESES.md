@@ -156,6 +156,32 @@ seeds 1-4 may be used to check the code. The confirmation chains are run once.
 
 If H13 or H14 fails, the README and the video say so: the claim then becomes what the data supports.
 
+## Round 5: a consortium of companies against a mule network (written 2026-11-10, 20:59 CET, before any code)
+The adversarial review of 10-Nov suggested a final act: several companies share what one of them confirmed. Round 5
+measures it, with best practices (round 4) in every lane.
+
+**World.** Chains of three companies, each a six-week world of its own (seeds 601-603, 611-613, ..., 691-693: chain
+*k* = 0-9 uses 600 + 10*k* + 1 to 600 + 10*k* + 3), run one after the other. The attackers reuse infrastructure: with
+probability *r*, an attack in a later company reuses the mule account, the phone and the device of an attack confirmed
+earlier in the chain (drawn from a random stream of its own). *r* is swept: 0, 0.25, 0.5, 0.75 and 1.
+
+**Lanes,** all with best practices:
+- `alone`: each company on its own, with Meko inside the company (learning v2), nothing shared between companies;
+- `blacklist`: as `alone`, plus an exact list of confirmed accounts, phones and devices shared by all companies (a match
+  is the signal `consortium.known_infrastructure`, weight 6, fixed now);
+- `consortium`: as `blacklist`, plus the attack patterns and legitimate look-alikes people approved in any company,
+  carried as collective memory (as round 3 carries it between periods).
+Only infrastructure from cases an analyst confirmed enters the shared list, and only patterns a person approved.
+
+- **H15, the network pays when crews reuse.** At *r* ≥ 0.5, `blacklist` and `consortium` stop more attacks before any
+  bank-change request than `alone`, summed over companies 2 and 3.
+- **H16, what Meko adds over a blacklist.** At *r* = 0, `consortium` acts at least 12 hours earlier on average than
+  `blacklist` on attacks both stop in companies 2 and 3.
+- **H17, the network does not burden legitimate vendors.** At every *r*, `consortium`'s frictions per period are at
+  most `alone`'s + 0.5.
+- **E5 (exploratory).** The whole sweep for every lane: attacks stopped, stopped before any request, hours before the
+  target run, money lost and frictions.
+
 ## Known limits, stated now
 - The same author wrote the world and the agents, so the agents may "play at home". To push against that, every
   attack kind has variants that remove signals (a VPN in the vendor's own country, no failed logins, the clerk
