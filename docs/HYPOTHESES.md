@@ -165,6 +165,11 @@ measures it, with best practices (round 4) in every lane.
 probability *r*, an attack in a later company reuses the mule account, the phone and the device of an attack confirmed
 earlier in the chain (drawn from a random stream of its own). *r* is swept: 0, 0.25, 0.5, 0.75 and 1.
 
+*Amendment, 2026-11-10 21:00 CET, before any code:* "confirmed" above would make the attackers' world depend on what
+each lane caught. Instead, an attack reuses the infrastructure of any attack earlier in the chain (the attackers'
+own, caught or not), so every lane faces the same world. What enters the shared list is still only what an
+analyst confirmed in that lane.
+
 **Lanes,** all with best practices:
 - `alone`: each company on its own, with Meko inside the company (learning v2), nothing shared between companies;
 - `blacklist`: as `alone`, plus an exact list of confirmed accounts, phones and devices shared by all companies (a match
