@@ -116,7 +116,7 @@ of view. That is part of the system as built, and it is measured as it is (E3 re
 (1-10) uses seeds 3*k*1-3*k*4" does not give the seeds it lists. The listed seeds, 301-304, 311-314, ..., 391-394
 (chain *k* = 0-9 uses 300 + 10*k* + 1 to 300 + 10*k* + 4), are the ones that ran.
 
-## Round 4: a fair comparison, with best practices in every lane (written 2026-11-10, ~15:40 CET, before any code)
+## Round 4: a fair comparison, with best practices in every lane (written 2026-11-10, 15:34 CET, local commit `d8010df`, before any code)
 An adversarial review (10-Nov) called the comparison a straw man: the siloed agents have neither Verification of
 Payee, mandatory for euro credit transfers in the EU since 9 October 2025, nor a callback that follows the payment
 policy. It also asked what Meko adds over a plain shared SQL table. Round 4 gives every lane the same best practices and
