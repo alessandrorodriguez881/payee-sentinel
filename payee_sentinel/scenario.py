@@ -16,7 +16,7 @@ Everything is invented. IBANs have valid check digits around random account numb
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 import random
 import string
@@ -455,6 +455,41 @@ def generate(seed: int = 7, n_vendors: int = 60, n_attacks: int = 8, n_benign: i
         elif e.kind == "callback":
             draws[e.id] = bp.random()
     return World(seed, vendors, events, attacks, benign, vop, draws)
+
+
+def infrastructure(world: World, case: Case) -> dict:
+    """What an attack used that it could use again: the mule account, the phone it answers and its device."""
+    own = set(world.vendors[case.vendor_id].devices)
+    device = next((e.data["device"] for e in world.events if e.attack_id == case.id and e.data.get("device")
+                   and e.data["device"] not in own), None)
+    return dict(iban=case.new_iban, phone=case.controlled_phone, device=device)
+
+
+def _swap(value, mapping: dict):
+    if isinstance(value, str):
+        for old, new in mapping.items():
+            value = value.replace(old, new)
+    return value
+
+
+def reuse_infrastructure(world: World, earlier: list[dict], rate: float) -> World:
+    """Round 5: with probability `rate`, an attack reuses the infrastructure of an attack earlier in the chain
+    (`earlier`, in chain order), from a random stream of its own. Events keep their ids and times."""
+    if not earlier or rate <= 0:
+        return world
+    rng = random.Random(f"reuse-{world.seed}-{rate}")
+    events, attacks = {e.id: e for e in world.events}, []
+    for case in world.attacks:
+        if rng.random() >= rate:
+            attacks.append(case)
+            continue
+        src, old = rng.choice(earlier), infrastructure(world, case)
+        mapping = {old[k]: src[k] for k in ("iban", "phone", "device") if old.get(k) and src.get(k)}
+        for eid in case.event_ids:
+            events[eid] = replace(events[eid], data={k: _swap(v, mapping) for k, v in events[eid].data.items()})
+        attacks.append(replace(case, new_iban=mapping.get(case.new_iban, case.new_iban),
+                               controlled_phone=mapping.get(case.controlled_phone, case.controlled_phone)))
+    return replace(world, events=[events[e.id] for e in world.events], attacks=attacks)
 
 
 if __name__ == "__main__":

@@ -28,7 +28,7 @@ from .agents import (LEARNING_MODES, LOOKBACK, MODES, Action, InboxAgent, Memory
                      SupportAgent, VendorMasterAgent, observable)
 from .context.base import approx_tokens
 from .context.local import LocalMeko
-from .scenario import START, Event, World, generate
+from .scenario import START, Event, World, generate, infrastructure, reuse_infrastructure
 
 DISCOVERY_DELAY = timedelta(days=10)
 PAY_HORIZON = timedelta(days=7)          # a run pays what falls due in the next 7 days
@@ -46,6 +46,7 @@ class CaseResult:
     hours_before_target: float | None = None
     loss_eur: float = 0.0
     actions: list[str] = field(default_factory=list)
+    request_at: str | None = None        # when the bank-change request arrived
 
 
 @dataclass
@@ -83,7 +84,8 @@ def _target_run(world: World, request_ts: datetime) -> datetime:
     return next((r for r in world.payment_runs if r > request_ts), world.payment_runs[-1] + timedelta(weeks=1))
 
 
-def run(world: World, mode: str, store=None, best_practices: bool = False, compliance: float = 0.7) -> RunResult:
+def run(world: World, mode: str, store=None, best_practices: bool = False, compliance: float = 0.7,
+        known: set | None = None) -> RunResult:
     """With `best_practices` (round 4), every lane gets Verification of Payee on bank-change requests and a callback
     that follows the payment policy (the number on file 60 days earlier) with probability `compliance`."""
     store = store or LocalMeko()
@@ -100,6 +102,7 @@ def run(world: World, mode: str, store=None, best_practices: bool = False, compl
     for a in world.attacks:
         req = next(e for e in world.events if e.attack_id == a.id and e.kind == "bank_change_request")
         targets[a.id] = _target_run(world, req.ts)
+        results[a.id].request_at = req.ts.isoformat()
     out = RunResult(world.seed, mode + ("+bp" if best_practices else ""), list(results.values()))
 
     current = {v.id: v.iban for v in world.vendors.values()}
@@ -137,6 +140,9 @@ def run(world: World, mode: str, store=None, best_practices: bool = False, compl
         if case_id in reviewed:
             return
         reviewed.add(case_id)
+        if known is not None:                          # round 5: what an analyst confirmed joins the shared list
+            case = next(a for a in world.attacks if a.id == case_id)
+            known.update(v for v in infrastructure(world, case).values() if v)
         current[vendor_id] = world.vendors[vendor_id].iban   # also after a loss found 10 days later
         types = vendor_types(vendor_id, at)
         mem.resolve(vendor_id, at, "attack confirmed by calling the vendor; real bank details restored.")
@@ -165,6 +171,19 @@ def run(world: World, mode: str, store=None, best_practices: bool = False, compl
         ids = store.memory_add(mem.legit_dp, mem.conversation("auditor"), "auditor", text,
                                dict(kind="legit_pattern", signal_types=types, learning_candidate=True))
         out.legit_promoted += len(store.promote(mem.legit_dp, ids))
+
+    flagged: set[tuple[str, str]] = set()
+
+    def check_known(e: Event, agent) -> None:
+        """Round 5: a value in the event that is on the shared list of confirmed attacker infrastructure."""
+        if not known:
+            return
+        text = " ".join(str(v) for v in e.data.values())
+        for value in sorted(known):
+            if value in text and (e.vendor_id, value) not in flagged:
+                flagged.add((e.vendor_id, value))
+                agent.emit(e, "consortium.known_infrastructure",
+                           f"{value} was used in an attack confirmed earlier (the shared list).")
 
     def under_attack(vendor_id: str, at: datetime) -> str | None:
         """An attack on this vendor that has started and is not stopped yet (hidden truth, used only to score)."""
@@ -201,6 +220,7 @@ def run(world: World, mode: str, store=None, best_practices: bool = False, compl
             e = item
             if e.channel in by_channel:
                 sigs = by_channel[e.channel].on_event(e)
+                check_known(e, by_channel[e.channel])
                 if e.channel == "inbox" and sigs:
                     types = {s.type for s in sigs}
                     if types & {"email.lookalike_domain", "email.freemail_sender"} and \
@@ -217,6 +237,7 @@ def run(world: World, mode: str, store=None, best_practices: bool = False, compl
                     vm.rejected.add(e.id)
                     vm.actions.append(Action(e.ts, "inbox", "reject_bank_change", e.vendor_id, 0,
                                              ["phishing email"], e.id))
+                check_known(e, vm)
                 vm.on_event(e)
                 if best_practices and e.kind == "bank_change_request" and e.id not in vm.rejected:
                     outcome = world.vop.get(e.id)
@@ -347,6 +368,24 @@ def run_chain(seeds: list[int], mode: str, best_practices: bool = False, complia
     return out
 
 
+def run_consortium(seeds: list[int], lane: str, reuse: float, compliance: float = 0.7) -> list[RunResult]:
+    """Round 5: companies one after the other, all with best practices and Meko inside each company. `alone`: nothing
+    shared between them; `blacklist`: a shared list of confirmed accounts, phones and devices; `consortium`: that list
+    plus the collective memory people approved in any company. The attackers reuse earlier infrastructure the same way
+    in every lane."""
+    known = set() if lane in ("blacklist", "consortium") else None
+    earlier, store, out = [], LocalMeko(), []
+    for seed in seeds:
+        world = reuse_infrastructure(generate(seed), earlier, reuse)
+        result = run(world, "learning2", store if lane == "consortium" else LocalMeko(), True, compliance, known)
+        result.mode = lane
+        out.append(result)
+        earlier += [infrastructure(world, a) for a in world.attacks]
+        if lane == "consortium":
+            store = carry_learning(store)
+    return out
+
+
 def summarize_periods(chains: dict[str, list[list[RunResult]]]) -> dict:
     """Round 3, per mode and period: means over chains. Frictions as in H6 (false-positive holds + legitimate bank
     changes blocked + wrong freezes); collective memory counted cumulatively, as it is carried."""
@@ -390,7 +429,21 @@ def main() -> None:
     ap.add_argument("--chains", default="", help="round 3: comma-separated seed ranges, one chain each, e.g. 1-4,11-14")
     ap.add_argument("--best-practices", action="store_true", help="round 4: VoP and policy callbacks in every lane")
     ap.add_argument("--compliance", type=float, default=0.7, help="round 4: share of callbacks that follow the policy")
+    ap.add_argument("--consortium", action="store_true", help="round 5: chains of companies (use --chains)")
+    ap.add_argument("--reuse", default="0,0.25,0.5,0.75,1", help="round 5: rates of infrastructure reuse")
     args = ap.parse_args()
+    if args.consortium:
+        data = {r: {lane: [[dict(asdict(x), stopped=x.stopped, early=x.early, loss=x.loss)
+                            for x in run_consortium(_seeds(part), lane, float(r), args.compliance)]
+                           for part in args.chains.split(",")] for lane in ("alone", "blacklist", "consortium")}
+                for r in args.reuse.split(",")}
+        for r, lanes in data.items():
+            print(f"reuse {r}: " + ", ".join(f"{lane} stopped {sum(c['stopped'] for ch in runs for c in ch)}"
+                                            for lane, runs in lanes.items()))
+        if args.out:
+            Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.out).write_text(json.dumps(data, indent=1, default=str))
+        return
     if args.chains:
         chains = {m + ("+bp" if args.best_practices else ""): [run_chain(_seeds(part), m, args.best_practices,
                                                                           args.compliance)

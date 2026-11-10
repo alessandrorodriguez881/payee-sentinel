@@ -52,6 +52,7 @@ WEIGHTS = {
     "bank.callback_denied": 6,
     "bank.vop_no_match": 6,           # round 4: Verification of Payee, fixed on 10-nov before any run
     "bank.vop_close_match": 2,
+    "consortium.known_infrastructure": 6,   # round 5, fixed on 10-nov before any run
     "pattern.match": 4,
     "pay.recent_bank_change": 1,
     "pay.first_payment_new_iban": 1,

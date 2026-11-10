@@ -11,8 +11,8 @@ from payee_sentinel.context.base import Hit
 from payee_sentinel.context.local import LocalMeko
 from payee_sentinel.context.meko import MekoClient, MekoError
 from payee_sentinel.context.replay import Recorder, Replayer, ReplayMismatch, latest_recording
-from payee_sentinel.evaluate import carry_learning, run, run_chain, summarize
-from payee_sentinel.scenario import generate, iban_is_valid
+from payee_sentinel.evaluate import carry_learning, run, run_chain, run_consortium, summarize
+from payee_sentinel.scenario import generate, iban_is_valid, infrastructure, reuse_infrastructure
 from payee_sentinel.ledger import SqliteLedger
 from payee_sentinel.scenario import Event, make_iban
 from payee_sentinel.story import CHAPTERS, INVOICES, VENDORS, Chapter, Lane, Story
@@ -103,6 +103,20 @@ def test_evaluation_is_deterministic_and_sharing_never_loses_to_silos():
     again = summarize([run(generate(2), "siloed"), run(generate(2), "shared")])
     assert first == again
     assert first["shared"]["stopped"] >= first["siloed"]["stopped"]
+
+
+def test_round_five_reuse_is_lane_independent_and_the_shared_list_fires():
+    first, second = generate(1), generate(2)
+    earlier = [infrastructure(first, a) for a in first.attacks]
+    reused = reuse_infrastructure(second, earlier, 1.0)
+    assert all(a.new_iban in {i["iban"] for i in earlier} for a in reused.attacks)
+    assert [e.id for e in reused.events] == [e.id for e in second.events]           # same events, same times
+    assert reuse_infrastructure(second, earlier, 0.0) is second
+    alone = run_consortium([1, 2], "alone", 1.0)
+    shared = run_consortium([1, 2], "blacklist", 1.0)
+    assert [r.mode for r in shared] == ["blacklist", "blacklist"]
+    assert shared[1].stopped >= alone[1].stopped
+    assert summarize([run_consortium([1, 2], "consortium", 0.5)[1]]) == summarize([run_consortium([1, 2], "consortium", 0.5)[1]])
 
 
 def test_round_four_best_practices_come_from_their_own_stream(world):
