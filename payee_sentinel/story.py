@@ -230,6 +230,18 @@ def _iban(iban: str) -> str:
     return " ".join(iban[i:i + 4] for i in range(0, len(iban), 4))
 
 
+class SharedMemory(Memory):
+    """A member's memory in a consortium. Meko cannot delete a promoted memory, so a pattern another member shared and
+    then took back stays in the collective memory, and the agents skip it (`revoked`, the ids of such patterns)."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.revoked: set[str] = set()
+
+    def patterns(self, agent: str):
+        return [h for h in super().patterns(agent) if h.id not in self.revoked]
+
+
 class Lane:
     """One team of agents with its own memory store and its own view of the money."""
 
@@ -237,7 +249,7 @@ class Lane:
                  vendors: dict[str, Vendor] | None = None):
         self.mode, self.store, self.ledger = mode, store, ledger    # the ledger: the Meko lane's system of record
         self.vendors = vendors or VENDORS
-        self.mem = Memory(store, mode, self.vendors, run_id)
+        self.mem = SharedMemory(store, mode, self.vendors, run_id)
         self.agents = {"portal": PortalAgent(self.mem), "support": SupportAgent(self.mem),
                        "inbox": InboxAgent(self.mem)}
         self.vm, self.pay = VendorMasterAgent(self.mem), PaymentAgent(self.mem)
@@ -685,28 +697,57 @@ class Story:
                 store.knowledge_ready(mem.patterns_dp, key, conv)
 
     @staticmethod
-    def _consortium_hits(lane: Lane) -> list[dict]:
+    def _consortium_hits(lane: Lane) -> tuple[list[dict], set[tuple[str, str]]]:
+        """The consortium's entries and its revocations, read back from its datapack: (entries, revoked cases)."""
         dp = lane.store.ensure_datapack("consortium", "Attacker infrastructure the member companies confirmed")
         hits = lane.store.memory_search(dp, lane.mem.conversation("auditor"), "auditor",
-                                        "confirmed attacker bank account device phone shared by", limit=50)
-        return [h.metadata for h in hits if h.metadata.get("kind") == "infrastructure"]
+                                        "confirmed attacker bank account device phone shared by revocation case",
+                                        limit=100)
+        found = [h.metadata for h in hits]
+        return ([m for m in found if m.get("kind") == "infrastructure"],
+                {(m["company"], m["case"]) for m in found if m.get("kind") == "revocation"})
 
     def _consortium_list(self, lane: Lane) -> dict[str, dict]:
-        """The shared list as Weller's agents read it from Meko: value -> where it came from (first confirmation)."""
+        """The shared list as Weller's agents read it from Meko: value -> where it came from (first confirmation that
+        its member has not taken back)."""
+        entries, revoked = self._consortium_hits(lane)
         out: dict[str, dict] = {}
-        for m in sorted(self._consortium_hits(lane), key=lambda m: m["confirmed"]):
-            out.setdefault(m["value"], dict(m, confirmed=datetime.fromisoformat(m["confirmed"])))
+        for m in sorted(entries, key=lambda m: m["confirmed"]):
+            if (m["company"], m["case"]) not in revoked:
+                out.setdefault(m["value"], dict(m, confirmed=datetime.fromisoformat(m["confirmed"])))
         return out
+
+    def revoke(self, company: str, case: str, reason: str) -> list[str]:
+        """A member takes back everything it shared about one case. Nothing is deleted: a revocation record goes into
+        the consortium datapack (the audit trail stays), the shared list is read again without the case, and the
+        pattern from that case stops counting in the members' checks. Returns the values that left the list."""
+        lane = self.act["consortium"]
+        store, conv = lane.store, lane.mem.conversation("auditor")
+        dp = store.ensure_datapack("consortium", "Attacker infrastructure the member companies confirmed")
+        at = next(ch.when for ch in CHAPTERS if ch.key == "network")
+        store.memory_add(dp, conv, "auditor", f"Revocation by {company}: everything shared about the {case} case is "
+                         f"taken back on {at:%d %b %Y}. Reason: {reason}",
+                         dict(kind="revocation", company=company, case=case, at=at.isoformat(), reason=reason))
+        before = set(lane.consortium)
+        lane.consortium = self._consortium_list(lane)
+        lane.mem.revoked |= {mid for mid, src in lane.shared_patterns.items()
+                             if src == f"from the {case} case at {company}"}
+        return sorted(before - set(lane.consortium))
 
     def network(self) -> dict:
         """The consortium after week 3, read back from its datapack, and when each of Weller's teams acted."""
         lane, rows = self.act["consortium"], {}
-        for m in sorted(self._consortium_hits(lane), key=lambda m: (m["confirmed"], m["what"])):
-            row = rows.setdefault(m["value"], dict(what=m["what"], value=m["value"], by=[]))
+        entries, revoked = self._consortium_hits(lane)
+        for m in sorted(entries, key=lambda m: (m["confirmed"], m["what"])):
+            row = rows.setdefault(m["value"], dict(what=m["what"], value=m["value"], by=[], active=False))
+            gone = (m["company"], m["case"]) in revoked
             row["by"].append(f"{m['company']} ({m['case']} case, {datetime.fromisoformat(m['confirmed']):%d %b}, "
-                             f"trace {m['trace'][:8]})")
+                             f"trace {m['trace'][:8]})" + (", taken back" if gone else ""))
+            row["active"] = row["active"] or not gone
+        cases = list(dict.fromkeys((m["company"], m["case"]) for m in sorted(entries, key=lambda m: m["confirmed"])))
         ask = min(e.ts for ch in CHAPTERS if ch.key == "tue3" for e in ch.events)
-        return dict(rows=list(rows.values()), patterns=list(lane.shared_patterns.values()), asked=ask,
+        return dict(rows=list(rows.values()), asked=ask, cases=cases, revoked=sorted(revoked),
+                    patterns=[src for mid, src in lane.shared_patterns.items() if mid not in lane.mem.revoked],
                     alone=self.act["alone"].first_action.get("V101"), consortium=lane.first_action.get("V101"))
 
     def promote(self, vendor_id: str) -> bool:

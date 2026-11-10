@@ -43,6 +43,10 @@ def test_click_through_the_story_with_a_promotion(monkeypatch):
         assert not at.exception
     assert any("frozen Mon 30 Nov 13:20, 21 hours before the attacker asked" in m.value for m in at.markdown)
     assert _button(at, "End of the story").disabled
+    _button(at, "Take it back").click()                  # a member takes a case back
+    at.run()
+    assert not at.exception
+    assert any("took back the Nordwind Logistik GmbH case: 2 values left the shared list" in i.value for i in at.info)
 
 
 def test_the_demo_replays_a_recorded_run(monkeypatch, tmp_path):

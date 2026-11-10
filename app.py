@@ -100,6 +100,7 @@ with st.sidebar:
 
 if engine != ss.engine or restart:
     ss.engine = engine
+    ss.pop("revoked_note", None)
     with st.status("Setting up the datapacks…" if engine == LIVE else "Starting again…"):
         ss.story = new_story(engine)
     st.rerun()
@@ -197,7 +198,7 @@ with story_tab:
                             f"details")
                 st.markdown("- Attack patterns a person approved, in every member's collective memory: "
                             + ("; ".join(f"the pattern {p}" for p in net["patterns"]) or
-                               "none (nobody promoted a pattern at Hallberg in this run)"))
+                               "none in use"))
                 st.markdown("- Confirmed case files, in every member's knowledge base: the account, the device and "
                             "the order of the attacker's steps")
             with right:
@@ -213,12 +214,27 @@ with story_tab:
             st.markdown("**The consortium's datapack after week 3**")
             st.dataframe([{"what": r["what"],
                            "value": spaced(r["value"]) if r["what"] == "bank account" else r["value"],
+                           "in use": "yes" if r["active"] else "no",
                            "confirmed by": "; ".join(r["by"])} for r in net["rows"]], hide_index=True,
                          column_config={"confirmed by": st.column_config.TextColumn(width="large")},
                          alt="Attacker infrastructure the member companies confirmed")
             st.caption("Only what an analyst confirmed and a person approved goes in, each entry with the decision "
-                       "trace it came from, and the member that shared it can take it back. Raw signals, vendor data "
-                       "and payments stay inside each company.")
+                       "trace it came from. Raw signals, vendor data and payments stay inside each company.")
+            open_cases = [c for c in net["cases"] if c not in net["revoked"]]
+            if open_cases:
+                with st.form("revoke"):
+                    st.markdown("**Take a case back**: if a member finds its analyst was wrong, it withdraws what it "
+                                "shared about that case.")
+                    pick = st.selectbox("Case", open_cases, format_func=lambda c: f"{c[0]}: the {c[1]} case")
+                    if st.form_submit_button("Take it back", icon=":material/undo:"):
+                        gone = story.revoke(pick[0], pick[1], "the member's analyst found the confirmation was wrong")
+                        st.session_state.revoked_note = (f"{pick[0]} took back the {pick[1]} case: "
+                                                         f"{len(gone)} values left the shared list.")
+                        st.rerun()
+            if st.session_state.get("revoked_note"):
+                st.info(st.session_state.revoked_note + " Nothing was deleted: the revocation is a record of its own "
+                        "in the consortium's datapack, and the pattern from that case stops counting in every member's "
+                        "checks (Meko keeps a promoted memory; the agents skip it).", icon=":material/undo:")
         else:
             summary = story.summary()
             cols = st.columns(2, gap="large")

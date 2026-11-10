@@ -271,6 +271,13 @@ def test_week_three_the_consortium_freezes_before_the_crew_asks():
     shared = {r["value"]: r["by"] for r in net["rows"]}
     assert len(shared[CREW["V001"]["iban"]]) == 2 and "dev-2b9d57" in shared   # Weller's case went back in
 
+    gone = s.revoke("Hallberg Components GmbH", "Nordwind Logistik GmbH", "test")   # taken back, nothing deleted
+    assert gone == ["+49 152 7781934", "dev-7f3a91"]                 # the account stays: Weller confirmed it too
+    assert CREW["V001"]["iban"] in joined.consortium and not joined.mem.patterns("inbox")
+    rows = {r["value"]: r for r in s.network()["rows"]}
+    assert not rows["dev-7f3a91"]["active"] and rows[CREW["V001"]["iban"]]["active"]
+    assert s.network()["patterns"] == [] and len(s.network()["rows"]) == len(net["rows"])
+
 
 def test_a_denied_callback_is_traced_as_a_rejection_without_an_older_search():
     lane, t = Lane("learning2", LocalMeko(), "t"), datetime(2026, 11, 18, 10)
