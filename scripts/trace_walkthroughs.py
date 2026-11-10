@@ -18,7 +18,10 @@ sys.path.insert(0, str(ROOT))
 
 from payee_sentinel.context import load_env  # noqa: E402
 from payee_sentinel.context.local import LocalMeko  # noqa: E402
-from payee_sentinel.story import AGENT_NAMES, CHAPTERS, LANES, VENDORS, Story, _n  # noqa: E402
+from payee_sentinel.story import (ACT_LANES, AGENT_NAMES, CHAPTERS, LANES, VENDORS, VENDORS2,  # noqa: E402
+                                   Story, _n)
+
+ALL_VENDORS, ALL_LANES = {**VENDORS, **VENDORS2}, {**LANES, **ACT_LANES}
 
 PICKS = [  # (lane, vendor, outcome, why this one)
     ("siloed", "V001", "allow", "The siloed vendor-master agent lets the attacker's bank change through."),
@@ -31,10 +34,10 @@ PICKS = [  # (lane, vendor, outcome, why this one)
 
 
 def walkthrough(n: int, lane_key: str, d: dict, why: str) -> list[str]:
-    v = VENDORS[d["vendor_id"]]
+    v = ALL_VENDORS[d["vendor_id"]]
     out = [f"## {n}. {why}", "",
-           f"**{LANES[lane_key]} · {AGENT_NAMES[d['agent']]}, {d['at']:%A %d %B %H:%M}: {d['what']}** "
-           f"(outcome `{d['outcome']}`, risk {d['risk']})", "",
+           f"**{ALL_LANES[lane_key]} · {AGENT_NAMES[d['agent']]}, {d['at']:%A %d %B %H:%M}: {d['what']}** "
+           f"(outcome `{d['outcome']}`, risk {d['risk']}, decision trace `{str(d['trace_id'])[:8]}`)", "",
            f"- **Rule:** {d['rule']}.",
            f"- **Reasoning saved with the decision:** {d['reasoning']}",
            f"- **Search behind it:** `{d['query']}` in `{d['datapack']}`, {_n(len(d['memory_ids']), 'memory').replace('memorys', 'memories')} found."]
@@ -103,8 +106,38 @@ def main() -> None:
                   f"{score['a']}). A week later the same question about Bergmann's request, with another "
                   f"account and device, " + (f"pointed to {later['related']} as a similar case: {later['link']}."
                                              if later.get("related") else "found no related case."), ""]
-    (ROOT / "docs" / "TRACES.md").write_text("\n".join(lines), encoding="utf-8")
-    print(f"docs/TRACES.md: {n} walkthroughs" + (" + the self-learning loop" if meko.learning.get("after") else ""))
+    lines += week_three(story, n + (2 if meko.learning.get("after") else 1))
+    (ROOT / "docs" / "TRACES.md").write_text("\n".join(lines), encoding="utf-8", newline="\n")
+    print(f"docs/TRACES.md: {n} walkthroughs" + (" + the self-learning loop" if meko.learning.get("after") else "")
+          + " + week 3")
+
+
+def week_three(story: Story, n: int) -> list[str]:
+    """Week 3: Weller's freeze, then the chain of traces back to the Hallberg decision it rests on."""
+    joined, hallberg = story.act.get("consortium"), story.lanes["learning2"]
+    d = next((d for d in joined.log if d["outcome"] == "freeze"), None) if joined else None
+    stop = next((x for x in hallberg.log if x["vendor_id"] == "V001" and x["outcome"] != "allow"), None)
+    if d is None or stop is None or not joined.shared_patterns:
+        return []
+    known = [w for w in joined.mem.written if w.type == "consortium.known_infrastructure"]
+    asked = joined.asked.get("V101", {})
+    out = walkthrough(n, "consortium", d, "Week 3: at another company of the consortium, a pattern approved at "
+                                          "Hallberg freezes a vendor before the attacker asks for new bank details.")
+    out += ["**The chain of traces, across two companies:**", "",
+            f"1. The decision above matched the attack pattern {next(iter(joined.shared_patterns.values()))}. "
+            f"Weller's agents read it from their collective memory in Meko.",
+            f"2. At Hallberg, the auditor agent wrote that pattern after the analyst confirmed the Nordwind case "
+            f"({hallberg.confirmed['V001']:%A %d %B %H:%M}), and a person promoted it. Only then could it be shared.",
+            f"3. Hallberg's own stop on Nordwind is decision trace `{str(stop['trace_id'])[:8]}` (walkthrough 3): "
+            f"{stop['what']}, {stop['at']:%A %d %B %H:%M}, risk {stop['risk']}.",
+            "4. On Tuesday, Weller's inbox agent found the account in the bank-change email on the consortium's list: "
+            + (known[0].detail[0].lower() + known[0].detail[1:] if known else "no match."),
+            f"5. Weller's vendor-master agent then asked Meko about the request (`context_search`) and found "
+            + (f"the {asked['related']} case file ({asked['link']}; Meko rates the match {asked.get('quality')})."
+               if asked.get("related") else "no related case file."), "",
+            "Week 3 runs on the offline simulator of Meko, in every mode. Hallberg's side of the chain comes from the "
+            "same run as walkthroughs 1-5.", ""]
+    return out
 
 
 if __name__ == "__main__":
