@@ -142,18 +142,28 @@ phone and device of an earlier attack in the chain. Lanes: each company `alone` 
 `blacklist` of the accounts, phones and devices analysts confirmed, and a `consortium` (that list plus the attack
 patterns and legitimate look-alikes people approved in any company).
 
-Attacks stopped before any bank-change request was even sent, in companies 2 and 3 (160 attacks):
+Attacks stopped early in companies 2 and 3 (160 attacks). *Before the attacker asks* means before the attacker's
+first message asking for new bank details (the email, or the change entered in the portal). *Before the change is
+entered* is the pre-registered measure: it also counts the stops at that email, two minutes before the request reaches
+the vendor master.
 
-| Reuse *r* | alone | blacklist | consortium | Frictions per period, alone / consortium |
-|---|---|---|---|---|
-| 0 | 36 | 36 | **89** | 4.17 / 4.00 |
-| 0.25 | 36 | 39 | **92** | 4.17 / 4.00 |
-| 0.5 | 36 | 44 | **105** | 4.10 / 3.97 |
-| 0.75 | 36 | 49 | **110** | 4.13 / 3.97 |
-| 1 | 36 | 54 | **122** | 4.17 / 3.97 |
+| Reuse *r* | Before the attacker asks: alone / blacklist / consortium | Before the change is entered (pre-registered): alone / blacklist / consortium | Frictions per period, alone / consortium |
+|---|---|---|---|
+| 0 | 27 / 27 / **41** | 36 / 36 / **89** | 4.17 / 4.00 |
+| 0.25 | 27 / 30 / **45** | 36 / 39 / **92** | 4.17 / 4.00 |
+| 0.5 | 27 / 31 / **48** | 36 / 44 / **105** | 4.10 / 3.97 |
+| 0.75 | 27 / 36 / **54** | 36 / 49 / **110** | 4.13 / 3.97 |
+| 1 | 27 / 38 / **61** | 36 / 54 / **122** | 4.17 / 3.97 |
 
-- **H15 holds.** At *r* of 0.5 and more, the blacklist and the consortium both stop more attacks before any request
-  than companies alone (44-54 and 105-122 against 36).
+*Correction, 2026-11-10 21:22 CET.* The first write-up said "before any bank-change request was even sent", and the
+README "before the attacker even asks", for the pre-registered count. Checked in the run data: in the email attacks the
+attacker's email comes two minutes before the request is entered, and about half of the consortium's early stops are
+at that email (48 of 89 at *r* = 0, 61 of 122 at *r* = 1). The stricter count is now the first column. More than a day
+before the attacker asks: alone 24, blacklist 24-34, consortium 31-51.
+
+- **H15 holds under both readings.** At *r* of 0.5 and more, the blacklist and the consortium stop more attacks than
+  companies alone before the change is entered (44-54 and 105-122 against 36), and also before the attacker asks
+  (31-38 and 48-61 against 27).
 - **H16 holds.** With no reuse at all, the consortium acts 23.5 hours earlier than the blacklist on the 158 attacks both
   stop in companies 2 and 3 (the bar was 12): what people approved in one company protects the next one even when the
   attackers change accounts, phones and devices.
@@ -163,7 +173,7 @@ Attacks stopped before any bank-change request was even sent, in companies 2 and
   neither stopped: €7,179 and €55,661), €0 at *r* = 0.25, and at *r* = 1 €0 with the blacklist or the consortium against €55,661 alone.
 
 ## What this means for the product
-- **Between companies, the network acts before the attacker asks** (round 5): with a consortium, 89-122 of 160 attacks in the next companies are stopped before any bank-change request, against 36 for companies alone, with no more friction.
+- **Between companies, the network acts earlier** (round 5): with a consortium, 41-61 of 160 attacks in the next companies are stopped before the attacker even asks for a bank change, against 27 for companies alone (89-122 against 36 counting the stops at the attacker's own email), with no more friction.
 - **Against best practices, the honest claim is narrower** (round 4): VoP and policy callbacks close most of the gap on their own; sharing still stops the rest (319 of 320 against 305) and cuts losses from €710,177 to €12,535 over 40 periods, at about 4 frictions per period; Meko matches a shared table on attacks and acts about 56 hours earlier.
 - **Shared memory is the result to show.** In two independent sets of 20 periods it stops about twice as many attacks
   as siloed agents (156-158 against 81-82) and cuts the money lost from €2.27M to €0.13M (round 1) and from €3.17M to

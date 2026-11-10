@@ -58,9 +58,10 @@ from €710,177 to €12,535 over 40 six-week periods, at about 4 frictions per 
 none). Meko stops the same 319 as the table and acts about 56 hours earlier.
 
 Round 5 joins companies: when one company confirms an attack, the accounts, phones and devices it used and the
-patterns people approved go to a shared consortium. In the next companies, 89 of 160 attacks are stopped before the
-attacker even asks for a bank change when the crew changes all its infrastructure, and 122 when it reuses it all,
-against 36 for companies alone, with no more friction. All five rounds, with their failed
+patterns people approved go to a shared consortium. In the next companies, 41 of 160 attacks are stopped before the
+attacker even asks for a bank change when the crew changes all its infrastructure, and 61 when it reuses it all,
+against 27 for companies alone, with no more friction (89 and 122 against 36 when the stops at the attacker's own
+email, two minutes before the change is entered, also count). All five rounds, with their failed
 hypotheses and the corrections made after independent reviews, are in `docs/RESULTS.md`.
 
 ## Run it
