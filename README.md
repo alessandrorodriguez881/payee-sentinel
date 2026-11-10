@@ -68,12 +68,18 @@ hypotheses and the corrections made after independent reviews, are in `docs/RESU
 ```bash
 pip install -r requirements.txt
 python -m pytest -q
-streamlit run app.py                                  # the demo: two weeks, siloed agents vs agents sharing Meko
+streamlit run app.py                                  # the demo: siloed agents vs Meko, then a consortium
 python -m payee_sentinel.evaluate --seeds 1-5         # the measurement
 ```
 The demo replays the same two weeks for two teams of agents with the same rules: week 1, a takeover of Nordwind
 Logistik's supplier-portal account; week 2, the same crew on Bergmann Verpackung. After week 1 a person can promote
-the confirmed attack pattern to Meko's collective memory, and week 2 shows what changes.
+the confirmed attack pattern to Meko's collective memory, and week 2 shows what changes. Week 3 moves to Weller
+Maschinenbau, another company of the same consortium: the crew comes back with a new device, address and phone but the
+mule account of the Nordwind case. Weller runs the same agents twice, on its own and with what Hallberg's analyst
+confirmed and a person approved (round 5's rule, the same weights). On its own it stops the attack at Tuesday's callback,
+after the request; in the consortium, Hallberg's approved pattern freezes the vendor on Monday afternoon, 21 hours
+before the attacker asks for new bank details, and on Tuesday the mule account comes up with the trace of Hallberg's
+decision. Week 3 always runs on the offline simulator, so the recorded run of weeks 1-2 stays valid.
 Without a `MEKO_API_KEY` everything runs on the offline simulator (`payee_sentinel/context/local.py`). With a key in
 `.env` (see `.env.example`), `python scripts/meko_smoke.py` checks every Meko feature used here against the real service.
 `python scripts/record_run.py --real` records one run on real Meko, call by call, into `recordings/` (do it once, on
@@ -90,7 +96,10 @@ memories behind it), memory with metadata, hybrid search, promotion by a person,
 the missing context after a confirmed case, and Meko replays the weak question to check the fix. Postgres inside the
 context: the ledger (vendor master with its history, bank-change requests, payments) is a Postgres database in a Meko
 datapack, every record linked to the decision trace behind it, with a SQLite copy where that database cannot be
-reached (`payee_sentinel/ledger.py`). Token tracking works against the live service but is not used by the agents yet. Feature by feature, with the code that uses each:
+reached (`payee_sentinel/ledger.py`). Sharing between companies (week 3, simulated in one place): a `consortium`
+datapack with the accounts, phones and devices each member's analyst confirmed, every entry with the decision trace
+behind it, while approved patterns and case files go into each member's collective memory and knowledge base. Token
+tracking works against the live service but is not used by the agents yet. Feature by feature, with the code that uses each:
 `docs/MEKO_USAGE.md`. Five decisions explained from their traces: `docs/TRACES.md`. What the live service actually
 returned: `docs/MEKO_SMOKE.md`.
 
@@ -103,4 +112,8 @@ returned: `docs/MEKO_SMOKE.md`.
   extracts facts with an LLM. Results from each are reported separately.
 - The Meko MCP client follows the reference client in
   [yugabyte/canned-agents](https://github.com/yugabyte/canned-agents) (Apache-2.0).
+- Week 3 is one illustrative case, not the measurement. Its crew also asks for the open invoices on Monday, and that
+  email completes the match with Hallberg's approved pattern (6 of its 10 signal types); without it, the consortium
+  would freeze the vendor on Tuesday, at the attacker's own email. Over 160 attacks, round 5 measured 41-61 stopped
+  before the attacker asks in the consortium, against 27 for a company on its own.
 - Built with Claude Code, which wrote most of the code; the author directed the work and made the product decisions.

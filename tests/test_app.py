@@ -27,13 +27,22 @@ def test_click_through_the_story_with_a_promotion(monkeypatch):
     _button(at, "Promote to collective memory").click()  # a person approves the pattern
     at.run()
     assert any("Promoted to Meko's collective memory" in s.value for s in at.success)
-    while (b := next((b for b in at.button if b.label.startswith("Next:")), None)) and not b.disabled:
-        b.click()
+    while at.subheader[0].value != "Two weeks later":
+        _button(at, "Next:").click()
         at.run()
         assert not at.exception
     metrics = {m.label + str(i): m.value for i, m in enumerate(at.metric) if m.label == "Sent to the attackers"}
     assert sorted(metrics.values()) == ["€0", "€85,250"]
     assert any("Bergmann Verpackung GmbH: stopped Tue 24 Nov 09:05" in m.value for m in at.markdown)
+    _button(at, "Next:").click()                         # week 3, Monday: another company in the consortium
+    at.run()
+    assert any("bank details frozen by an approved pattern (Mon 13:20)" in s.value for s in at.success)
+    for _ in range(2):                                   # Tuesday, then what the consortium shares
+        _button(at, "Next:").click()
+        at.run()
+        assert not at.exception
+    assert any("frozen Mon 30 Nov 13:20, 21 hours before the attacker asked" in m.value for m in at.markdown)
+    assert _button(at, "End of the story").disabled
 
 
 def test_the_demo_replays_a_recorded_run(monkeypatch, tmp_path):
@@ -61,9 +70,13 @@ def test_the_demo_replays_a_recorded_run(monkeypatch, tmp_path):
     assert _button(at, "Next:").disabled                 # the recorded run had a promotion here
     _button(at, "Promote to collective memory").click()
     at.run()
-    while (b := next((b for b in at.button if b.label.startswith("Next:")), None)) and not b.disabled:
-        b.click()
+    while at.subheader[0].value != "Two weeks later":
+        _button(at, "Next:").click()
         at.run()
         assert not at.exception
     metrics = [m.value for m in at.metric if m.label == "Sent to the attackers"]
     assert sorted(metrics) == ["€0", "€85,250"]
+    while (b := next((b for b in at.button if b.label.startswith("Next:")), None)) and not b.disabled:
+        b.click()                                        # week 3 runs on the simulator after the replay
+        at.run()
+        assert not at.exception

@@ -14,7 +14,7 @@ from payee_sentinel.context import load_env
 from payee_sentinel.context.local import LocalMeko
 from payee_sentinel.context.replay import Replayer, ReplayMismatch, latest_recording
 from payee_sentinel.ledger import PgLedger, open_ledger
-from payee_sentinel.story import AGENT_NAMES, BUYER, CHAPTERS, LANES, RUNS, VENDORS, Story
+from payee_sentinel.story import ACT_LANES, AGENT_NAMES, BUYER, BUYER2, CHAPTERS, LANES, RUNS, VENDORS, Story
 
 st.set_page_config(page_title="Payee Sentinel", page_icon=":material/shield_lock:", layout="wide")
 
@@ -27,6 +27,7 @@ TARGET_RUN = {"V001": RUNS["run1"], "V002": RUNS["run2"]}
 ALERT = {"good": st.success, "bad": st.error, "warn": st.warning, "neutral": st.info}
 ICON = {"good": ":material/verified_user:", "bad": ":material/money_off:", "warn": ":material/schedule:",
         "neutral": ":material/info:"}
+LANE_LABEL = {**LANES, **ACT_LANES}
 
 
 def new_story(engine: str) -> Story:
@@ -42,6 +43,18 @@ def new_story(engine: str) -> Story:
 
 def money(x: float) -> str:
     return f"€{x:,.0f}"
+
+
+def spaced(value: str) -> str:
+    return " ".join(value[i:i + 4] for i in range(0, len(value), 4))
+
+
+def stopped(at: datetime | None, asked: datetime, verb: str) -> str:
+    """When a team acted, against the moment the attacker asked for new bank details."""
+    if at is None:
+        return "never stopped"
+    hours = abs((asked - at).total_seconds()) / 3600
+    return f"{verb} {at:%a %d %b %H:%M}, {hours:.0f} hours {'before' if at < asked else 'after'} the attacker asked"
 
 
 ss = st.session_state
@@ -111,7 +124,8 @@ with story_tab:
         st.markdown(
             f"**{BUYER}** pays its suppliers every Thursday. Two teams of agents watch the same events with "
             f"the same rules. On the left, each agent keeps its own memory, as separate tools do today. On the right, "
-            f"they share it through **Meko**: what one agent writes, the others find before they act.")
+            f"they share it through **Meko**: what one agent writes, the others find before they act. In week 3 "
+            f"the crew moves on to another company of the same consortium.")
         cast = st.columns(3)
         cast[0].markdown("**Portal agent** — logins, password resets and contact changes on the supplier portal\n\n"
                          "**Inbox agent** — emails to accounts payable")
@@ -125,10 +139,14 @@ with story_tab:
         st.subheader(ch.title)
         st.caption(f"{ch.when:%A %d %B %Y, %H:%M}")
         st.write(ch.story)
+        if ch.act:
+            st.caption(":material/hub: Week 3 runs on the offline simulator of Meko in every mode: both companies "
+                       "and their consortium are simulated in one place. Only what Hallberg's analyst confirmed and a "
+                       "person approved is shared.")
         if ch.kind in ("events", "payments"):
             for col, (mode, o) in zip(st.columns(2, gap="large"), outcomes.items()):
                 with col:
-                    st.markdown(f"**{LANES[mode]}**")
+                    st.markdown(f"**{LANE_LABEL[mode]}**")
                     ALERT[o.tone](o.headline, icon=ICON[o.tone])
                     for step in o.steps:
                         with st.status(f"{AGENT_NAMES[step.agent]} · {step.title}", type="step", expanded=True,
@@ -169,6 +187,38 @@ with story_tab:
                         st.caption("Meko grades every open question an agent asks it and lists the weak ones. The "
                                    "fix is new context; the replay checks it. Next week's request will be asked the "
                                    "same way.")
+        elif ch.kind == "network":
+            net = story.network()
+            left, right = st.columns(2, gap="large")
+            with left:
+                st.markdown(f"**{BUYER2}: the same attack, twice**")
+                st.markdown(f"- On its own: {stopped(net['alone'], net['asked'], 'stopped')} for new bank details")
+                st.markdown(f"- In the consortium: {stopped(net['consortium'], net['asked'], 'frozen')} for new bank "
+                            f"details")
+                st.markdown("- Attack patterns a person approved, in every member's collective memory: "
+                            + ("; ".join(f"the pattern {p}" for p in net["patterns"]) or
+                               "none (nobody promoted a pattern at Hallberg in this run)"))
+                st.markdown("- Confirmed case files, in every member's knowledge base: the account, the device and "
+                            "the order of the attacker's steps")
+            with right:
+                st.markdown("**Measured over 160 attacks in the next companies (round 5):** attacks stopped before "
+                            "the attacker asks for new bank details")
+                st.table([{"": f"Attackers reuse {r} of their infrastructure", "On its own": a,
+                           "Shared blacklist": b, "Consortium (Meko)": c}
+                          for r, a, b, c in (("0 %", "27", "27", "41"), ("50 %", "27", "31", "48"),
+                                             ("100 %", "27", "38", "61"))])
+                st.caption("Every lane with Verification of Payee and policy callbacks. More than a day before the "
+                           "attacker asks: 24 on its own, 24-34 with a blacklist, 31-51 in the consortium. Frictions "
+                           "per period: 3.97-4.00 in the consortium, 4.10-4.17 on its own. Details in docs/RESULTS.md.")
+            st.markdown("**The consortium's datapack after week 3**")
+            st.dataframe([{"what": r["what"],
+                           "value": spaced(r["value"]) if r["what"] == "bank account" else r["value"],
+                           "confirmed by": "; ".join(r["by"])} for r in net["rows"]], hide_index=True,
+                         column_config={"confirmed by": st.column_config.TextColumn(width="large")},
+                         alt="Attacker infrastructure the member companies confirmed")
+            st.caption("Only what an analyst confirmed and a person approved goes in, each entry with the decision "
+                       "trace it came from, and the member that shared it can take it back. Raw signals, vendor data "
+                       "and payments stay inside each company.")
         else:
             summary = story.summary()
             cols = st.columns(2, gap="large")
@@ -191,8 +241,9 @@ with story_tab:
             with st.expander("Earlier steps", icon=":material/history:"):
                 for c, out in story.done[:-1]:
                     if c.kind in ("events", "payments"):
-                        st.markdown(f"**{c.title}** — silos: {out['siloed'].headline} · "
-                                    f"Meko: {out['learning2'].headline}")
+                        (a, a_name), (b, b_name) = ((("alone", "on its own"), ("consortium", "in the consortium"))
+                                                    if c.act else (("siloed", "silos"), ("learning2", "Meko")))
+                        st.markdown(f"**{c.title}** — {a_name}: {out[a].headline} · {b_name}: {out[b].headline}")
 
 # ---------- what Meko recorded ----------
 with meko_tab:

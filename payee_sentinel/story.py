@@ -6,6 +6,10 @@ The same events reach two teams of agents with the same rules (`agents.py`). In 
 - Week 1: someone takes over Nordwind Logistik's supplier-portal account (Monday), asks for payments to go to a new
   IBAN (Tuesday), and the payment run is on Thursday.
 - Week 2: the same crew tries Bergmann Verpackung.
+- Week 3: the crew moves on to Weller Maschinenbau, another company in the same consortium, with a new device, address
+  and phone but the same mule account. Weller runs the same agents twice: on its own, and with what Hallberg's analyst
+  confirmed and a person approved (round 5's rule, the same weights). This act always runs on the offline simulator,
+  so a recorded run of weeks 1-2 stays valid.
 
 Each chapter is one step on screen. The analyst is simulated with what a real one could do: call the vendor on the
 number that was on file 60 days earlier. Everything is invented.
@@ -60,6 +64,14 @@ CREW = {  # the attackers' side of each attack (hidden truth)
                  iban=make_iban(_rng, "LT")),
 }
 ATTACKER_IBANS = {c["iban"]: vid for vid, c in CREW.items()}
+BUYER2 = "Weller Maschinenbau GmbH"      # week 3: another member of the consortium
+VENDORS2 = {"V101": Vendor("V101", "Brenner Stahlbau GmbH", "DE", "brenner-stahlbau.de", "accounts@brenner-stahlbau.de",
+                           "+49 231 7740650", make_iban(random.Random(2027), "DE"), "Brenner Stahlbau GmbH", ["DE"],
+                           ["dev-v101a"], 14, 26000, 30)}
+CREW["V101"] = dict(device="dev-2b9d57", country="NG", email="brenner.finance@gmail.com", phone="+49 151 6620417",
+                    iban=CREW["V001"]["iban"])   # new device, address and phone; the Nordwind case's mule account
+ACT_LANES = {"alone": "Weller on its own (its agents share Meko inside the company)",
+             "consortium": "Weller in the consortium (plus what Hallberg confirmed and approved)"}
 
 
 @dataclass
@@ -71,10 +83,12 @@ class Chapter:
     kind: str = "events"          # events | payments | audit | summary
     events: list[Event] = field(default_factory=list)
     review_after: bool = False
+    act: bool = False             # week 3: Weller's two teams instead of Hallberg's
+    vendor: str | None = None     # the vendor the chapter's headline is about
 
 
-def _takeover(vid: str, day: datetime, n_fails: int) -> list[Event]:
-    v, c = VENDORS[vid], CREW[vid]
+def _takeover(vid: str, day: datetime, n_fails: int, vendors: dict[str, Vendor] = VENDORS) -> list[Event]:
+    v, c = vendors[vid], CREW[vid]
     t = day + timedelta(hours=9, minutes=2)
     out = [Event(f"{vid}-F{i}", t + timedelta(seconds=11 * i), "portal", "login", vid,
                  dict(device=c["device"], country=c["country"], success=False)) for i in range(n_fails)]
@@ -89,8 +103,8 @@ def _takeover(vid: str, day: datetime, n_fails: int) -> list[Event]:
     return out
 
 
-def _bank_change(vid: str, t: datetime, callback_after: timedelta) -> list[Event]:
-    v, c = VENDORS[vid], CREW[vid]
+def _bank_change(vid: str, t: datetime, callback_after: timedelta, vendors: dict[str, Vendor] = VENDORS) -> list[Event]:
+    v, c = vendors[vid], CREW[vid]
     body = (f"Dear Accounts Payable team,\n\nwe have updated our bank details in your supplier portal. From now on, "
             f"please pay all open invoices to:\nAccount holder: {v.name}\nIBAN: {c['iban']}\n"
             f"Please update this before Friday's payment run.\n\nBest regards,\nFinance Department\n{v.name}")
@@ -100,6 +114,15 @@ def _bank_change(vid: str, t: datetime, callback_after: timedelta) -> list[Event
                   dict(via="portal", new_iban=c["iban"], holder=v.name, device=c["device"], country=c["country"])),
             Event(f"{vid}-B2", t + callback_after, "vendor_master", "callback", vid,
                   dict(phone=c["phone"], phone_source="master", result="confirmed"))]
+
+
+def _open_items(vid: str, t: datetime, vendors: dict[str, Vendor]) -> Event:
+    """Reconnaissance from the address the crew just put on file: how much is due, and when."""
+    v, c = vendors[vid], CREW[vid]
+    return Event(f"{vid}-M0", t, "inbox", "email", vid, dict(
+        sender=c["email"], reply_to=None, subject="Open items",
+        body=f"Hello,\n\nfor our month-end reconciliation, could you send us the list of all open invoices and the "
+             f"next payment date?\n\nThank you,\n{v.name}"))
 
 
 def _routine(day: datetime) -> list[Event]:
@@ -114,7 +137,7 @@ def _invoice(vid: str, no: str, amount: float, due: datetime) -> Event:
                  dict(invoice_no=no, amount=amount, currency="EUR", due=due.date().isoformat(), sender=v.email))
 
 
-MON1, MON2 = datetime(2026, 11, 16), datetime(2026, 11, 23)
+MON1, MON2, MON3 = datetime(2026, 11, 16), datetime(2026, 11, 23), datetime(2026, 11, 30)
 RUNS = {"run1": MON1 + timedelta(days=3, hours=8), "run2": MON2 + timedelta(days=3, hours=8)}
 INVOICES = {
     "run1": [_invoice("V001", "NW-2026-1187", 48300.00, MON1 + timedelta(days=4)),
@@ -157,6 +180,23 @@ CHAPTERS = [
             "Four payments, including Bergmann's €31,750 and Nordwind's next invoice.", kind="payments"),
     Chapter("summary", RUNS["run2"] + timedelta(hours=1), "Two weeks later",
             "What reached the attackers, and when each team acted.", kind="summary"),
+    Chapter("mon3", MON3 + timedelta(hours=9, minutes=12), "Week 3, Monday · another company in the consortium",
+            f"The crew moves on to {BUYER2}, another company in the same consortium, which has never seen it. With a "
+            "new device, a new email address and a new phone it takes over Brenner Stahlbau's supplier-portal account, "
+            "and in the afternoon it asks for the list of open invoices. Weller runs the same agents twice: on its "
+            "own, and with what Hallberg's analyst confirmed and a person approved.",
+            events=_takeover("V101", MON3, 7, VENDORS2) + [_open_items("V101", MON3 + timedelta(hours=13, minutes=20),
+                                                                        VENDORS2)],
+            review_after=True, act=True, vendor="V101"),
+    Chapter("tue3", MON3 + timedelta(days=1, hours=10, minutes=5), "Week 3, Tuesday · the same mule account",
+            "The new address asks for payments to go to a new account, the change arrives through the portal, and the "
+            "clerk calls back in the afternoon. The account is the one Hallberg confirmed in the Nordwind case.",
+            events=_bank_change("V101", MON3 + timedelta(days=1, hours=10, minutes=5), timedelta(hours=5, minutes=35),
+                                VENDORS2),
+            review_after=True, act=True, vendor="V101"),
+    Chapter("network", MON3 + timedelta(days=1, hours=17), "What the consortium shares",
+            "Each member gives the consortium only what its analyst confirmed and a person approved, with the decision "
+            "trace behind it, and Weller's confirmed case now goes in for the next member.", kind="network", act=True),
 ]
 
 
@@ -193,14 +233,16 @@ def _iban(iban: str) -> str:
 class Lane:
     """One team of agents with its own memory store and its own view of the money."""
 
-    def __init__(self, mode: str, store, run_id: str | None = None, ledger: Ledger | None = None):
+    def __init__(self, mode: str, store, run_id: str | None = None, ledger: Ledger | None = None,
+                 vendors: dict[str, Vendor] | None = None):
         self.mode, self.store, self.ledger = mode, store, ledger    # the ledger: the Meko lane's system of record
-        self.mem = Memory(store, mode, VENDORS, run_id)
+        self.vendors = vendors or VENDORS
+        self.mem = Memory(store, mode, self.vendors, run_id)
         self.agents = {"portal": PortalAgent(self.mem), "support": SupportAgent(self.mem),
                        "inbox": InboxAgent(self.mem)}
         self.vm, self.pay = VendorMasterAgent(self.mem), PaymentAgent(self.mem)
-        self.current = {vid: v.iban for vid, v in VENDORS.items()}
-        self.changed_at: dict[str, datetime | None] = {vid: None for vid in VENDORS}
+        self.current = {vid: v.iban for vid, v in self.vendors.items()}
+        self.changed_at: dict[str, datetime | None] = {vid: None for vid in self.vendors}
         self.paid_ibans = set(self.current.values())
         self.payments: list[dict] = []
         self.confirmed: dict[str, datetime] = {}
@@ -211,6 +253,9 @@ class Lane:
         self.requests: dict[str, Event] = {}       # vendor -> its latest bank-change request
         self.asked: dict[str, dict] = {}           # vendor -> the vendor-master agent's question about earlier cases
         self.learning: dict = {}                   # what the auditor's run of Meko's self-learning loop found
+        self.consortium: dict[str, dict] = {}      # week 3: attacker infrastructure other members confirmed
+        self.flagged: set[tuple[str, str]] = set()
+        self.shared_patterns: dict[str, str] = {}  # memory id of a pattern another member approved -> its case
 
     # ---------- helpers ----------
     def _decision(self, agent: str, vendor_id: str, at: datetime, what: str, risk: int, reasons: list[str],
@@ -240,7 +285,8 @@ class Lane:
         if agent == "vendor_master" and self.asked.get(vendor_id, {}).get("related"):
             trace["related_case"] = f"{self.asked[vendor_id]['related']} ({self.asked[vendor_id]['link']})"
         conv = self.mem.conversation(agent)
-        trace_id = self.store.add_message(self.mem.signals_dp, conv, agent, f"{VENDORS[vendor_id].name}: {what}", what,
+        trace_id = self.store.add_message(self.mem.signals_dp, conv, agent, f"{self.vendors[vendor_id].name}: {what}",
+                                          what,
                                           reasoning=reasoning, plan=[f"search Meko for {vendor_id}'s signals",
                                                                      "add up the weights", rule], metadata=trace)
         self.mem.record_decision(agent, vendor_id, at, what, risk, rule, reasoning, outcome, trace["memory_ids"])
@@ -258,14 +304,30 @@ class Lane:
             detail = s.detail
             for vid, cand in self.candidates.items():     # name the case a pattern came from, not its memory id
                 for mid in cand["ids"]:
-                    detail = detail.replace(f"pattern {mid[:8]}", f"pattern from the {VENDORS[vid].name} case")
+                    detail = detail.replace(f"pattern {mid[:8]}", f"pattern from the {self.vendors[vid].name} case")
+            for mid, case in self.shared_patterns.items():
+                detail = detail.replace(f"pattern {mid[:8]}", f"pattern {case}")
             lines.append(f"`{s.type}` (+{s.weight}) — {detail}")
         return lines
 
     def case_question(self, e: Event) -> str:
         iban = e.data["new_iban"]
         return (f"Has the bank account {iban} ({COUNTRIES.get(iban[:2], iban[:2])}) or the device {e.data['device']} "
-                f"appeared in an earlier confirmed fraud case? Bank-change request for {VENDORS[e.vendor_id].name}.")
+                f"appeared in an earlier confirmed fraud case? Bank-change request for "
+                f"{self.vendors[e.vendor_id].name}.")
+
+    def _check_known(self, e: Event, agent) -> None:
+        """Week 3, round 5's rule: a value in the event that the consortium lists as confirmed attacker infrastructure
+        adds `consortium.known_infrastructure`, once per vendor and value, saying where it came from."""
+        text = " ".join(str(v) for v in e.data.values())
+        for value in sorted(self.consortium):
+            if value in text and (e.vendor_id, value) not in self.flagged:
+                self.flagged.add((e.vendor_id, value))
+                c = self.consortium[value]
+                shown = _iban(value) if c["what"] == "bank account" else value
+                agent.emit(e, "consortium.known_infrastructure",
+                           f"The {c['what']} {shown} was used in the {c['case']} case that {c['company']} confirmed "
+                           f"on {c['confirmed']:%d %b} (shared by the consortium; decision trace {c['trace'][:8]}).")
 
     @staticmethod
     def _link(case_text: str, iban: str, device: str) -> tuple[int, str] | None:
@@ -315,16 +377,18 @@ class Lane:
     def run_events(self, chapter: Chapter) -> Outcome:
         steps: list[Step] = []
         total_fails = {vid: sum(1 for e in chapter.events if e.vendor_id == vid and e.kind == "login"
-                                and not e.data["success"]) for vid in VENDORS}
+                                and not e.data["success"]) for vid in self.vendors}
         first_fail = {}
         for e in chapter.events:
             if e.id.startswith("R-"):
                 self.agents["portal"].on_event(e)        # routine logins: no step on screen
                 continue
             w0, r0, a0, f0 = len(self.mem.written), len(self.mem.reads), len(self.vm.actions), len(self.mem.freezes)
-            if e.channel in self.agents:
-                self.agents[e.channel].on_event(e)
+            if e.channel in self.agents:                 # round 5's order: channel agents check after reading,
+                self.agents[e.channel].on_event(e)       # the vendor master before it decides
+                self._check_known(e, self.agents[e.channel])
             else:
+                self._check_known(e, self.vm)
                 self.vm.on_event(e)
             agent = e.channel if e.channel in self.agents else "vendor_master"
             title = _event_title(e)
@@ -346,7 +410,7 @@ class Lane:
             if e.kind == "callback" and own_reads:
                 vid, sigs = own_reads[-1]
                 others = sorted({AGENT_NAMES[s.agent] for s in sigs if s.agent != agent})
-                step.lines.append(f"Searched memory for {VENDORS[vid].name}: {_n(len(sigs), 'signal')} in 30 days"
+                step.lines.append(f"Searched memory for {self.vendors[vid].name}: {_n(len(sigs), 'signal')} in 30 days"
                                   + (f", from {', '.join(others)}" if others else ", none from other agents"))
             for f in self.mem.freezes[f0:]:
                 step.tone = "good"
@@ -407,7 +471,9 @@ class Lane:
                 continue
             when = max(at, at_chapter) + timedelta(minutes=50)
             self.confirmed[vid] = when
-            v = VENDORS[vid]
+            v = self.vendors[vid]
+            said = ("We never asked to change our bank details." if vid in self.requests else
+                    "We never changed our contact details.")
             types = sorted(observable(s.type for s in self.mem.signals("auditor", vid, when)))
             self.mem.resolve(vid, when, "attack confirmed by calling the vendor; real bank details kept.")
             self.mem.freezes.append(Action(when, "analyst", "freeze_vendor", vid, 0, ["confirmed incident"], vid))
@@ -424,14 +490,15 @@ class Lane:
                 source = " (the ledger's history)"
                 self.ledger.frozen(vid, when, None)
             steps.append(Step("analyst", f"{when:%a %H:%M} · calls {v.name} on {phone}, the number on file "
-                                         f"60 days ago{source}", [f"{v.name}: \"We never asked to change our bank "
-                                                          f"details.\" **Attack confirmed**; bank details stay "
-                                                          f"frozen.", f"The auditor agent writes the case up as a "
-                                                          f"pattern candidate ({len(types)} signal types)."],
+                                         f"60 days ago{source}", [f"{v.name}: \"{said}\" **Attack confirmed**; bank "
+                                                          f"details stay frozen.", f"The auditor agent writes the case "
+                                                          f"up as a pattern candidate ({len(types)} signal types)."],
                               "good"))
         if not steps and not flagged:
             steps.append(Step("analyst", "No alert to review",
-                              ["No agent saw enough on its own to raise an alert."], "neutral"))
+                              ["No agent saw enough on its own to raise an alert." if self.mode == "siloed" else
+                               "No agent has stopped anything yet: there is no request to block and no payment to "
+                               "hold."], "neutral"))
         return steps
 
     def run_payments(self, chapter: Chapter) -> Outcome:
@@ -439,7 +506,7 @@ class Lane:
         self.mem.new_session("payments")             # every payment run starts with no conversation history
         step = Step("payments", f"{run:%a %H:%M} · new session, {len(INVOICES[chapter.key])} payments due")
         for inv in INVOICES[chapter.key]:
-            v = VENDORS[inv.vendor_id]
+            v = self.vendors[inv.vendor_id]
             iban = self.current[v.id]
             r0 = len(self.mem.reads)
             act = self.pay.decide(run, v, inv, iban, self.changed_at[v.id], self.paid_ibans)
@@ -486,12 +553,12 @@ class Lane:
         if chapter.kind == "payments":
             lost = sum(p["amount"] for p in self.payments if p["to_attacker"] and p["run"] == chapter.key)
             return f"{_money(lost)} sent to the attacker" if lost else "Nothing sent to the attacker"
-        vid = "V001" if chapter.key.endswith("1") else "V002"
+        vid = chapter.vendor or ("V001" if chapter.key.endswith("1") else "V002")
         if vid in self.decisions:
             d = self.decisions[vid]
             return f"{AGENT_NAMES[d['agent']]}: {d['what']} ({d['at']:%a %H:%M})"
-        if self.current[vid] != VENDORS[vid].iban:
-            return f"{VENDORS[vid].name}'s payments now go to the attacker's account"
+        if self.current[vid] != self.vendors[vid].iban:
+            return f"{self.vendors[vid].name}'s payments now go to the attacker's account"
         return "Signals written to memory; nothing stopped yet"
 
 
@@ -525,6 +592,7 @@ class Story:
         self.lanes = {"siloed": Lane("siloed", LocalMeko(), f"{self.run_id}-siloed"),
                       "learning2": Lane("learning2", make_store(), f"{self.run_id}-meko", self.ledger)}
         self.done: list[tuple[Chapter, dict[str, Outcome]]] = []
+        self.act: dict[str, Lane] = {}                 # week 3: Weller on its own and in the consortium
         meko = self.lanes["learning2"]
         for doc in sorted(KNOWLEDGE.glob("*.md")):     # the company's policy and playbook, in Meko's knowledge base
             meko.store.knowledge_upload(meko.mem.patterns_dp, doc.name, doc.read_bytes())
@@ -537,12 +605,18 @@ class Story:
         ch = self.next_chapter
         if ch is None:
             return
+        if ch.act and not self.act:
+            self._start_act()
         out = {}
-        for mode, lane in self.lanes.items():
+        for mode, lane in (self.act if ch.act else self.lanes).items():
             if ch.kind == "events":
                 out[mode] = lane.run_events(ch)
             elif ch.kind == "payments":
                 out[mode] = lane.run_payments(ch)
+            elif ch.kind == "network":
+                if mode == "consortium":                   # Weller's confirmed case goes in for the next member
+                    self._share_list(lane, BUYER2, lane)
+                out[mode] = Outcome(ch.key, [], "")
             else:
                 notes = self.explain(mode, "V001", ch.when) if ch.kind == "audit" else []
                 learning = []
@@ -551,6 +625,89 @@ class Story:
                     learning = self.self_learning(lane, "V001")
                 out[mode] = Outcome(ch.key, [], "", notes=notes, learning=learning)
         self.done.append((ch, out))
+
+    def _start_act(self) -> None:
+        """Week 3: Weller's two teams, both with Meko inside the company. They run on the offline simulator whatever
+        engine Hallberg's lane uses, so a recorded run of weeks 1-2 stays valid. The consortium team first receives
+        what Hallberg shares, then reads the shared list back from its `consortium` datapack."""
+        joined = Lane("learning2", LocalMeko(), f"{self.run_id}-weller-consortium", vendors=VENDORS2)
+        self.share(self.lanes["learning2"], BUYER, joined)
+        joined.consortium = self._consortium_list(joined)
+        self.act = {"alone": Lane("learning2", LocalMeko(), f"{self.run_id}-weller", vendors=VENDORS2),
+                    "consortium": joined}
+
+    @staticmethod
+    def infrastructure(lane: Lane, vendor_id: str) -> dict:
+        """The account, device and phone of a confirmed attack, as the company's own systems logged them (the
+        bank-change request and the phone change), and the decision trace behind the first stop."""
+        req = lane.requests.get(vendor_id)
+        phones = [s.extra.get("new_phone") for s in lane.mem.written
+                  if s.vendor_id == vendor_id and s.type == "contact.phone_changed" and s.extra.get("new_phone")]
+        stop = next((d for d in lane.log if d["vendor_id"] == vendor_id and d["outcome"] != "allow"), None)
+        values = [("bank account", req.data["new_iban"]), ("device", req.data["device"])] if req else []
+        return dict(values=values + ([("phone", phones[-1])] if phones else []),
+                    trace=stop["trace_id"] if stop else "")
+
+    def _share_list(self, source: Lane, company: str, target: Lane) -> None:
+        """The infrastructure of every attack `source`'s analyst confirmed goes into the `consortium` datapack of
+        `target`'s store (one datapack shared by the members; here, simulated in one place)."""
+        store, conv = target.store, target.mem.conversation("auditor")
+        dp = store.ensure_datapack("consortium", "Attacker infrastructure the member companies confirmed")
+        for vid, at in source.confirmed.items():
+            case, info = source.vendors[vid].name, self.infrastructure(source, vid)
+            for what, value in info["values"]:
+                store.memory_add(dp, conv, "auditor", f"Confirmed attacker {what} shared by {company}: {value}, used "
+                                 f"in the {case} case confirmed on {at:%d %b %Y}; decision trace {info['trace']}.",
+                                 dict(kind="infrastructure", what=what, value=value, company=company, case=case,
+                                      confirmed=at.isoformat(), trace=info["trace"]))
+
+    def share(self, source: Lane, company: str, target: Lane) -> None:
+        """What one member gives the consortium, and only that: the infrastructure of each attack its analyst
+        confirmed, the attack patterns a person approved (into the receiving company's collective memory) and the
+        confirmed case files (into its knowledge base). Raw signals and vendor data stay at home."""
+        self._share_list(source, company, target)
+        store, mem = target.store, target.mem
+        conv = mem.conversation("auditor")
+        for vid in source.confirmed:
+            case, cand = source.vendors[vid].name, source.candidates.get(vid)
+            if cand and cand["promoted"]:
+                ids = store.memory_add(mem.patterns_dp, conv, "auditor",
+                                       f"Attack pattern approved at {company} after the {case} case, shared by the "
+                                       f"consortium: these signals appeared within 30 days before an attempt to "
+                                       f"redirect payments to a new bank account. Signal types: "
+                                       f"[{', '.join(cand['types'])}] [run {mem.run_id}]",
+                                       dict(kind="pattern", company=company, case=case))
+                store.promote(mem.patterns_dp, ids)
+                target.shared_patterns[ids[0]] = f"from the {case} case at {company}"
+            if vid in source.requests:
+                key = store.knowledge_upload(mem.patterns_dp, f"consortium-case-{vid}.md",
+                                             self._case_file(source, vid).encode("utf-8"), conversation_id=conv)
+                store.knowledge_ready(mem.patterns_dp, key, conv)
+
+    @staticmethod
+    def _consortium_hits(lane: Lane) -> list[dict]:
+        dp = lane.store.ensure_datapack("consortium", "Attacker infrastructure the member companies confirmed")
+        hits = lane.store.memory_search(dp, lane.mem.conversation("auditor"), "auditor",
+                                        "confirmed attacker bank account device phone shared by", limit=50)
+        return [h.metadata for h in hits if h.metadata.get("kind") == "infrastructure"]
+
+    def _consortium_list(self, lane: Lane) -> dict[str, dict]:
+        """The shared list as Weller's agents read it from Meko: value -> where it came from (first confirmation)."""
+        out: dict[str, dict] = {}
+        for m in sorted(self._consortium_hits(lane), key=lambda m: m["confirmed"]):
+            out.setdefault(m["value"], dict(m, confirmed=datetime.fromisoformat(m["confirmed"])))
+        return out
+
+    def network(self) -> dict:
+        """The consortium after week 3, read back from its datapack, and when each of Weller's teams acted."""
+        lane, rows = self.act["consortium"], {}
+        for m in sorted(self._consortium_hits(lane), key=lambda m: (m["confirmed"], m["what"])):
+            row = rows.setdefault(m["value"], dict(what=m["what"], value=m["value"], by=[]))
+            row["by"].append(f"{m['company']} ({m['case']} case, {datetime.fromisoformat(m['confirmed']):%d %b}, "
+                             f"trace {m['trace'][:8]})")
+        ask = min(e.ts for ch in CHAPTERS if ch.key == "tue3" for e in ch.events)
+        return dict(rows=list(rows.values()), patterns=list(lane.shared_patterns.values()), asked=ask,
+                    alone=self.act["alone"].first_action.get("V101"), consortium=lane.first_action.get("V101"))
 
     def promote(self, vendor_id: str) -> bool:
         """A person approves the pattern: it becomes collective memory for every agent (Meko's promotion)."""
@@ -673,7 +830,7 @@ class Story:
     @staticmethod
     def _case_file(lane: Lane, vendor_id: str) -> str:
         """The confirmed case as one knowledge-base section, written from what the company's own systems logged."""
-        v, req = VENDORS[vendor_id], lane.requests[vendor_id]
+        v, req = lane.vendors[vendor_id], lane.requests[vendor_id]
         stop = next((d for d in lane.log if d["vendor_id"] == vendor_id and d["outcome"] != "allow"), None)
         sigs = sorted(stop["signals"] if stop else [], key=lambda s: s.at)
         iban, device, country = req.data["new_iban"], req.data["device"], req.data["country"]

@@ -15,7 +15,7 @@ from payee_sentinel.evaluate import carry_learning, run, run_chain, run_consorti
 from payee_sentinel.scenario import generate, iban_is_valid, infrastructure, reuse_infrastructure
 from payee_sentinel.ledger import SqliteLedger
 from payee_sentinel.scenario import Event, make_iban
-from payee_sentinel.story import CHAPTERS, INVOICES, VENDORS, Chapter, Lane, Story
+from payee_sentinel.story import CHAPTERS, CREW, INVOICES, VENDORS, Chapter, Lane, Story
 
 
 @pytest.fixture(scope="module")
@@ -224,7 +224,8 @@ def test_the_ledger_answers_as_of_queries_and_links_records_to_meko_traces(story
     assert all(c["trace_id"] in traces for c in changes)
     master = {v["vendor_id"]: v for v in story.ledger.table("vendors")}
     assert master["V001"]["phone"] == "+49 152 7781934"             # the attacker's number is the current one...
-    analyst = [st.title for _, out in story.done for st in out["learning2"].steps if st.agent == "analyst"]
+    analyst = [st.title for c, out in story.done if not c.act for st in out["learning2"].steps
+               if st.agent == "analyst"]
     assert any(VENDORS["V001"].phone in t and "ledger" in t for t in analyst)   # ...the analyst calls the old one
 
 
@@ -241,6 +242,34 @@ def test_the_committed_real_meko_recording_still_replays():
             story.promote("V001")
     assert replay.pos == len(replay.entries)
     assert story.summary()["learning2"]["lost"] == 0 and story.summary()["siloed"]["lost"] == 85250
+    net = story.network()                                           # week 3 runs on the simulator after the replay
+    assert net["consortium"] < net["asked"] < net["alone"]
+
+
+def test_week_three_the_consortium_freezes_before_the_crew_asks():
+    s = Story(LocalMeko)
+    while s.next_chapter.key != "mon3":
+        ch = s.next_chapter
+        s.advance()
+        if ch.key == "audit":
+            s.promote("V001")
+    before = s.summary()
+    while s.next_chapter:
+        s.advance()
+    assert s.summary() == before                                    # weeks 1-2 untouched, not one more Meko call
+    net = s.network()
+    assert net["consortium"] == datetime(2026, 11, 30, 13, 20) < net["asked"] == datetime(2026, 12, 1, 10, 5)
+    assert net["alone"] == datetime(2026, 12, 1, 15, 40)            # on its own: at the callback, after the ask
+    joined, alone = s.act["consortium"], s.act["alone"]
+    monday = [ln for st in s.done[-3][1]["consortium"].steps for ln in st.lines]
+    assert any("pattern from the Nordwind Logistik GmbH case at Hallberg Components GmbH" in ln for ln in monday)
+    known = [w for w in joined.mem.written if w.type == "consortium.known_infrastructure"]
+    assert [(w.at, w.agent) for w in known] == [(datetime(2026, 12, 1, 10, 5), "inbox")]   # the mule account
+    assert "LT73 5260" in known[0].detail and "Hallberg Components GmbH" in known[0].detail
+    assert not [w for w in alone.mem.written if w.type.startswith("consortium.")]
+    assert joined.asked["V101"]["related"] == "Nordwind Logistik GmbH"   # the case file shared by Hallberg
+    shared = {r["value"]: r["by"] for r in net["rows"]}
+    assert len(shared[CREW["V001"]["iban"]]) == 2 and "dev-2b9d57" in shared   # Weller's case went back in
 
 
 def test_a_denied_callback_is_traced_as_a_rejection_without_an_older_search():
