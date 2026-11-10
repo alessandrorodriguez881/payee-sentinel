@@ -4,7 +4,7 @@ Accounts-payable agents that share what they see through [Meko](https://mekodata
 takeover is stopped before the money leaves. Built for ContextCon: Remember Everything (theme 03, "Remember the
 Attacker").
 
-> **Status, 9 Nov 2026: work in progress.** The synthetic world, the agents, the measurement (three rounds) and a first
+> **Status, 9 Nov 2026: work in progress.** The synthetic world, the agents, the measurement (four rounds) and a first
 > demo screen exist. The demo runs offline, as a replay of a run recorded on real Meko, or live on real Meko. On empty
 > datapacks the real run reaches the same outcome as offline; once earlier runs fill the datapacks, their
 > near-identical memories outrank a new run's and the Meko lane misses its own signals (`docs/MEKO_SMOKE.md`). Still
@@ -49,8 +49,14 @@ confirms: wrong freezes fall by more than half and it acts about 6 hours earlier
 quite over six weeks (6.15 frictions per period against 5.60). Round 3 carries the collective memory over four
 consecutive periods: by the fourth, v2's wrong freezes are down from 3.1 to 0.6 per period, it costs 6.0 frictions
 against 5.8 for shared memory alone, and it acts 41-51 hours earlier. v1 acts as early but never stops freezing
-legitimate vendors by mistake. All three rounds, with their failed hypotheses and the corrections made after
-independent reviews, are in `docs/RESULTS.md`.
+legitimate vendors by mistake.
+
+Round 4 makes the comparison fair, after an adversarial review called it a straw man: every lane gets Verification
+of Payee and a callback that follows the payment policy, and a plain shared table runs as a lane of its own. Best
+practices alone take silos from 163 to 305 of 320 attacks stopped. A shared table stops 319 and cuts the money lost
+from €710,177 to €12,535 over 40 six-week periods, at about 4 frictions per period (silos with best practices have
+none). Meko stops the same 319 as the table and acts about 56 hours earlier. All four rounds, with their failed
+hypotheses and the corrections made after independent reviews, are in `docs/RESULTS.md`.
 
 ## Run it
 ```bash

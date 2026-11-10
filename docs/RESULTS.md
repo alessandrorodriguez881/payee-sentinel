@@ -1,6 +1,6 @@
 # Results
 
-Three rounds, each run once with the offline simulator of Meko: rounds 1 and 2 on 20 synthetic six-week periods
+Four rounds, each run once with the offline simulator of Meko (round 4 adds best practices to every lane): rounds 1 and 2 on 20 synthetic six-week periods
 (`python -m payee_sentinel.evaluate --seeds <seeds> --out runs/<file>.json`; `runs/` is not committed), round 3 on ten
 chains of four periods that carry their collective memory over (`--chains 301-304,311-314,...`). Each period
 has 60 vendors, 8 planted attacks, 20 legitimate look-alike cases and about 155 payments. The hypotheses were written
@@ -107,7 +107,34 @@ periods; each period is a new world, and only the promoted collective memory car
   - Money lost with shared memory, v1 or v2: €10,167 in period 2 (one attack, in all three), nothing in the others;
     in silos €1.2-1.9M per period.
 
+## Round 4: a fair comparison, best practices in every lane (run on 2026-11-10, 20:51-20:56 CET)
+
+Pre-registered at 15:34 (`d8010df`) after an adversarial review called the comparison a straw man; engine in `72c75bb`
+(20:51), checked only on the development chain 1-4, where rounds 2 and 3 also reproduced exactly. Ten chains of four
+six-week periods (seeds 501-594, 320 planted attacks). Every lane gets Verification of Payee on bank-change requests
+and a callback that follows the payment policy (the number on file 60 days earlier) 70 % of the time.
+
+| Lane | Attacks stopped (of 320) | Money sent to attackers (40 periods) | Frictions per period, periods 2-4 | Hours before the target run, periods 2-4 |
+|---|---|---|---|---|
+| Silos, no best practices (reference) | 163 | €7,490,207 | 0 | — |
+| **Silos with best practices** | 305 | €710,177 | **0** | 61.7 |
+| **Shared table** (one table every agent writes and reads; no learning) | **319** | €12,535 | 3.83 | 80.8 |
+| **Meko** (shared memory plus the collective memory a person approves) | **319** | €12,535 | 4.20 | **136.7** |
+
+- **H12 holds.** Best practices alone take silos from 163 to 305 attacks stopped: most of the old gap was the missing
+  controls, as the review said.
+- **H13 holds.** A shared table still stops 14 more (319 against 305), and fewer in none of the 40 chain-periods. Money
+  lost falls from €710,177 to €12,535 (one careful attacker, in period 4). The price: about 3.8 frictions per period
+  (legitimate changes held for a call, false holds), where silos with best practices have none.
+- **H14 holds.** Meko stops the same attacks as the table, and on the 239 attacks both stop in periods 2-4 it acts
+  55.9 hours earlier on average (the bar was 24); its frictions are 4.20 per period against 3.83 (the bar was 4.33).
+  What Meko adds over a shared table is timing, from what people approved, not more attacks caught.
+- **E4 (exploratory).** Silos with best practices miss 15 attacks: 9 by the careful attacker, whose own-name account
+  passes VoP, and 6 others whose callback did not follow the policy; the shared lanes miss one careful attack. With
+  callbacks following the policy half the time, silos stop 298 and the table 318; at 90 %, 314 and 319.
+
 ## What this means for the product
+- **Against best practices, the honest claim is narrower** (round 4): VoP and policy callbacks close most of the gap on their own; sharing still stops the rest (319 of 320 against 305) and cuts losses from €710,177 to €12,535 over 40 periods, at about 4 frictions per period; Meko matches a shared table on attacks and acts about 56 hours earlier.
 - **Shared memory is the result to show.** In two independent sets of 20 periods it stops about twice as many attacks
   as siloed agents (156-158 against 81-82) and cuts the money lost from €2.27M to €0.13M (round 1) and from €3.17M to
   €7,274 (round 2), at a cost of about one false hold, four step-up calls and four or five bank-change calls per six

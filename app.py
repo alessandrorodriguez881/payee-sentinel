@@ -289,6 +289,16 @@ with results_tab:
              "Wrong freezes, learning v1": ["5.40", "6.90", "6.80", "6.50"],
              "Frictions, learning v1": ["8.40", "8.80", "8.40", "8.10"]}
     st.table([{"": name, **dict(zip(periods, values))} for name, values in rows3.items()])
+    st.markdown("**A fair comparison (round 4):** every lane gets Verification of Payee and a callback that follows the "
+                "payment policy; a plain shared table runs as a lane of its own. Ten chains of four periods, 320 attacks.")
+    st.table([{"": "Attacks stopped (of 320)", "Silos, no best practices": "163", "Silos with best practices": "305",
+               "Shared table": "319", "Meko": "319"},
+              {"": "Money sent to attackers", "Silos, no best practices": "€7,490,207",
+               "Silos with best practices": "€710,177", "Shared table": "€12,535", "Meko": "€12,535"},
+              {"": "Frictions per period (periods 2-4)", "Silos, no best practices": "0", "Silos with best practices": "0",
+               "Shared table": "3.83", "Meko": "4.20"},
+              {"": "Hours before the target run (periods 2-4)", "Silos, no best practices": "—",
+               "Silos with best practices": "61.7", "Shared table": "80.8", "Meko": "136.7"}])
     st.caption("All three hypotheses of round 3 held. Both learning versions act earlier because they carry the attack "
                "patterns; only v2, which also learns the legitimate look-alikes, stops freezing vendors by mistake. "
                "Every hypothesis, the ones that failed, and the corrections made after independent reviews are in "
