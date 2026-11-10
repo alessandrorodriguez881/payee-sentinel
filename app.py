@@ -299,6 +299,12 @@ with results_tab:
                "Shared table": "3.83", "Meko": "4.20"},
               {"": "Hours before the target run (periods 2-4)", "Silos, no best practices": "—",
                "Silos with best practices": "61.7", "Shared table": "80.8", "Meko": "136.7"}])
+    st.markdown("**A consortium of companies (round 5):** what one company confirms (accounts, phones, devices) and the "
+                "patterns people approve go to a shared consortium. Attacks stopped before any bank-change request, in "
+                "the next companies (160 attacks):")
+    st.table([{"": f"Attackers reuse {r} of their infrastructure", "Each company alone": a, "Shared blacklist": b,
+               "Consortium (Meko)": c}
+              for r, a, b, c in (("0 %", "36", "36", "89"), ("50 %", "36", "44", "105"), ("100 %", "36", "54", "122"))])
     st.caption("All three hypotheses of round 3 held. Both learning versions act earlier because they carry the attack "
                "patterns; only v2, which also learns the legitimate look-alikes, stops freezing vendors by mistake. "
                "Every hypothesis, the ones that failed, and the corrections made after independent reviews are in "

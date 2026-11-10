@@ -1,6 +1,6 @@
 # Results
 
-Four rounds, each run once with the offline simulator of Meko (round 4 adds best practices to every lane): rounds 1 and 2 on 20 synthetic six-week periods
+Five rounds, each run once with the offline simulator of Meko (round 4 adds best practices to every lane; round 5 joins companies): rounds 1 and 2 on 20 synthetic six-week periods
 (`python -m payee_sentinel.evaluate --seeds <seeds> --out runs/<file>.json`; `runs/` is not committed), round 3 on ten
 chains of four periods that carry their collective memory over (`--chains 301-304,311-314,...`). Each period
 has 60 vendors, 8 planted attacks, 20 legitimate look-alike cases and about 155 payments. The hypotheses were written
@@ -133,7 +133,37 @@ and a callback that follows the payment policy (the number on file 60 days earli
   passes VoP, and 6 others whose callback did not follow the policy; the shared lanes miss one careful attack. With
   callbacks following the policy half the time, silos stop 298 and the table 318; at 90 %, 314 and 319.
 
+## Round 5: a consortium of companies against a mule network (run on 2026-11-10, 21:05-21:13 CET)
+
+Pre-registered at 20:59 (`d90fc2b`), amended at 21:00 before any code so that every lane faces the same attackers
+(`a8b2954`); engine in `bbc8000` (21:05), checked only on the development chain 1-3. Ten chains of three companies
+(seeds 601-693, 240 attacks), all with round 4's best practices. With probability *r* an attack reuses the mule account,
+phone and device of an earlier attack in the chain. Lanes: each company `alone` (Meko inside the company), a shared
+`blacklist` of the accounts, phones and devices analysts confirmed, and a `consortium` (that list plus the attack
+patterns and legitimate look-alikes people approved in any company).
+
+Attacks stopped before any bank-change request was even sent, in companies 2 and 3 (160 attacks):
+
+| Reuse *r* | alone | blacklist | consortium | Frictions per period, alone / consortium |
+|---|---|---|---|---|
+| 0 | 36 | 36 | **89** | 4.17 / 4.00 |
+| 0.25 | 36 | 39 | **92** | 4.17 / 4.00 |
+| 0.5 | 36 | 44 | **105** | 4.10 / 3.97 |
+| 0.75 | 36 | 49 | **110** | 4.13 / 3.97 |
+| 1 | 36 | 54 | **122** | 4.17 / 3.97 |
+
+- **H15 holds.** At *r* of 0.5 and more, the blacklist and the consortium both stop more attacks before any request
+  than companies alone (44-54 and 105-122 against 36).
+- **H16 holds.** With no reuse at all, the consortium acts 23.5 hours earlier than the blacklist on the 158 attacks both
+  stop in companies 2 and 3 (the bar was 12): what people approved in one company protects the next one even when the
+  attackers change accounts, phones and devices.
+- **H17 holds.** The consortium's frictions are 3.97-4.00 per period, slightly fewer than companies alone (4.10-4.17).
+- **E5 (exploratory).** Attacks stopped in all: 238-240 of 240 in every lane, because best practices already stop
+  nearly all of them; what the network changes is how early. Money lost: €62,840 in most cells (one careful attack and
+  one contained), €0 at *r* = 0.25, and at *r* = 1 €0 with the blacklist or the consortium against €55,661 alone.
+
 ## What this means for the product
+- **Between companies, the network acts before the attacker asks** (round 5): with a consortium, 89-122 of 160 attacks in the next companies are stopped before any bank-change request, against 36 for companies alone, with no more friction.
 - **Against best practices, the honest claim is narrower** (round 4): VoP and policy callbacks close most of the gap on their own; sharing still stops the rest (319 of 320 against 305) and cuts losses from €710,177 to €12,535 over 40 periods, at about 4 frictions per period; Meko matches a shared table on attacks and acts about 56 hours earlier.
 - **Shared memory is the result to show.** In two independent sets of 20 periods it stops about twice as many attacks
   as siloed agents (156-158 against 81-82) and cuts the money lost from €2.27M to €0.13M (round 1) and from €3.17M to
