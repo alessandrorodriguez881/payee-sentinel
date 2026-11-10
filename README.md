@@ -16,6 +16,20 @@ phone through the support line, an email asking to pay a new IBAN "before Friday
 system and looks harmless on its own. Here every channel has an agent that writes what looks risky to shared memory
 in Meko, and the agents that apply bank changes or release payments search that memory first.
 
+## Why it matters
+Redirecting a supplier's payments is one of the costliest frauds companies face, and it is the case this project
+models (a vendor's account taken over, then a request to pay a new IBAN):
+- **$2.77 billion** lost to business email compromise in the United States in 2024, across 21,442 complaints, the
+  second-costliest crime type the FBI recorded (FBI IC3, *2024 Internet Crime Report*, https://www.ic3.gov/AnnualReport/Reports/2024_IC3Report.pdf).
+- **79 %** of 521 organisations surveyed had attempted or actual payments fraud in 2024; business email compromise
+  was the No. 1 avenue (63 %), and **vendor-imposter fraud** was cited by 45 %, up 11 points (AFP, *2025 Payments
+  Fraud and Control Survey*, press release of 15 April 2025, https://www.financialprofessionals.org/about/learn-more/press-releases/Details/survey-79-percent-of-organizations-were-victims-of-attempted-or-actual-payments-fraud-activity-in-2024).
+- **£450.7 million** lost to authorised push payment fraud in the UK in 2024, £84.9 million of it by businesses and
+  other non-personal accounts (UK Finance, *Annual Fraud Report 2025*, press release of 28 May 2025, https://www.ukfinance.org.uk/news-and-insight/press-release/fraud-report-2025-press-release).
+
+These figures cover more than vendor takeovers; they show the scale of the problem, not the share this project would
+prevent. The project's own numbers below come from synthetic data.
+
 ## What is measured so far (synthetic data, offline Meko simulator)
 20 six-week periods, 60 vendors each, 160 planted attacks and 400 legitimate look-alike cases
 (`docs/HYPOTHESES.md` was written before the run; `docs/RESULTS.md` has everything, including what failed):
