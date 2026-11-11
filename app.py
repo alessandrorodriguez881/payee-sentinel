@@ -134,6 +134,9 @@ with story_tab:
                          "**Payments agent** — the Thursday payment run")
         cast[2].markdown("**Auditor agent** — explains each decision from its trace\n\n"
                          "**Analyst** — a person who confirms cases and approves what becomes shared knowledge")
+        st.caption("Why it matters: business email compromise losses reported to the FBI reached $2.77 billion in 2024 "
+                   "(FBI IC3, 2024 Internet Crime Report), and 45 % of the 521 finance professionals in the AFP's 2025 "
+                   "Payments Fraud and Control Survey cited vendor-imposter fraud. Sources in the README.")
         st.info("Press **Next** in the sidebar to start on Monday morning.", icon=":material/arrow_back:")
     else:
         ch, outcomes = story.done[-1]
