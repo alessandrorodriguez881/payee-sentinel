@@ -91,6 +91,13 @@ def _norm(text: str) -> str:
     return " ".join(text.split()).casefold()
 
 
+def _without(text: str, ids: set[str]) -> str:
+    """The text with every memory id (whole, or its first 8 characters) taken out."""
+    for i in sorted(ids, key=len, reverse=True):
+        text = text.replace(i, " ").replace(i[:8], " ")
+    return text
+
+
 class Reader:
     """Claude for one team of agents. `client` is an `anthropic.Anthropic`, or any object with the same
     `beta.messages.create` (the tests pass a fake one, so they need no key)."""
@@ -176,12 +183,12 @@ class Reader:
         data, usage, note = self._ask(EXPLAIN_SYSTEM, facts, EXPLAIN_SCHEMA, conversation_id, "auditor: explain")
         result = Result([], usage=usage, note=note)
         ids = {s.memory_id for s in decision["signals"] if s.memory_id}
-        numbers = set(NUMBER.findall(facts))
+        numbers = set(NUMBER.findall(_without(facts, ids)))   # memory ids are random: their digits prove nothing
         for s in (data or {}).get("sentences", []):
             text = str(s.get("text", "")).strip()
             cited = [str(m) for m in s.get("memory_ids", [])]
             unknown = [m for m in cited if len(m) < 8 or not any(i.startswith(m) or m.startswith(i) for i in ids)]
-            invented = [n for n in NUMBER.findall(text) if n not in numbers]
+            invented = [n for n in NUMBER.findall(_without(text, ids)) if n not in numbers]
             if not text:
                 continue
             if unknown:
