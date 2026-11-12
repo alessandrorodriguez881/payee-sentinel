@@ -14,6 +14,7 @@ from payee_sentinel.context import load_env
 from payee_sentinel.context.local import LocalMeko
 from payee_sentinel.context.replay import Replayer, ReplayMismatch, latest_recording
 from payee_sentinel.ledger import PgLedger, open_ledger
+from payee_sentinel.reader import Reader
 from payee_sentinel.story import ACT_LANES, AGENT_NAMES, BUYER, BUYER2, CHAPTERS, LANES, RUNS, VENDORS, Story
 
 st.set_page_config(page_title="Payee Sentinel", page_icon=":material/shield_lock:", layout="wide")
@@ -34,11 +35,11 @@ def new_story(engine: str) -> Story:
     """The ledger is Postgres in Meko when this machine can reach it (its details are in .env), else SQLite."""
     if engine == LIVE:
         from payee_sentinel.context.meko import MekoClient
-        return Story(MekoClient, make_ledger=open_ledger)
+        return Story(MekoClient, make_ledger=open_ledger, reader=Reader.from_env())
     if engine == REPLAY:
         replay = Replayer(RECORDING)
-        return Story(lambda: replay, run_id=replay.run_id, make_ledger=open_ledger)
-    return Story(LocalMeko, make_ledger=open_ledger)
+        return Story(lambda: replay, run_id=replay.run_id, make_ledger=open_ledger, reader=Reader.from_env())
+    return Story(LocalMeko, make_ledger=open_ledger, reader=Reader.from_env())
 
 
 def money(x: float) -> str:
@@ -97,6 +98,9 @@ with st.sidebar:
                 ":material/computer: Offline simulator of Meko") + " · all data is invented")
     st.caption((":material/database: Ledger: Postgres in Meko (AMP)" if isinstance(story.ledger, PgLedger) else
                 ":material/database: Ledger: a local SQLite copy"))
+    st.caption(":material/smart_toy: Claude Opus 5.5 reads the emails and explains decisions; it never decides"
+               if story.reader else ":material/smart_toy: Claude is off: no ANTHROPIC_API_KEY, so the agents run "
+               "exactly as measured")
 
 if engine != ss.engine or restart:
     ss.engine = engine
@@ -191,6 +195,13 @@ with story_tab:
                         st.caption("Meko grades every open question an agent asks it and lists the weak ones. The "
                                    "fix is new context; the replay checks it. Next week's request will be asked the "
                                    "same way.")
+                if outcomes["learning2"].claude:
+                    with st.container(border=True):
+                        st.markdown("**Claude explains it in plain words**")
+                        for line in outcomes["learning2"].claude:
+                            st.markdown(f"- {line}")
+                        st.caption("Claude Opus 5.5 reads the decision's trace in Meko. A sentence that cites a "
+                                   "memory or a number the trace does not hold is dropped before it is shown.")
         elif ch.kind == "network":
             net = story.network()
             left, right = st.columns(2, gap="large")

@@ -27,6 +27,7 @@ from .agents import (BLOCK_BANK_CHANGE_AT, HOLD_AT, STEP_UP_AT, Action, InboxAge
                      PortalAgent, Signal, SupportAgent, VendorMasterAgent, observable, risk_of)
 from .context.base import now_iso
 from .context.local import LocalMeko
+from .context.replay import Replayer
 from .ledger import Ledger, SqliteLedger
 from .scenario import Event, Vendor, make_iban
 
@@ -216,6 +217,7 @@ class Outcome:
     tone: str = "neutral"
     notes: list[str] = field(default_factory=list)
     learning: list[str] = field(default_factory=list)   # the auditor's run of Meko's self-learning loop
+    claude: list[str] = field(default_factory=list)     # Claude's plain account of the decision, checked
 
 
 def _n(count: int, word: str) -> str:
@@ -268,6 +270,7 @@ class Lane:
         self.consortium: dict[str, dict] = {}      # week 3: attacker infrastructure other members confirmed
         self.flagged: set[tuple[str, str]] = set()
         self.shared_patterns: dict[str, str] = {}  # memory id of a pattern another member approved -> its case
+        self.reader = None                         # Claude, in the Meko lane only: it reads, it never decides
 
     # ---------- helpers ----------
     def _decision(self, agent: str, vendor_id: str, at: datetime, what: str, risk: int, reasons: list[str],
@@ -327,6 +330,19 @@ class Lane:
         return (f"Has the bank account {iban} ({COUNTRIES.get(iban[:2], iban[:2])}) or the device {e.data['device']} "
                 f"appeared in an earlier confirmed fraud case? Bank-change request for "
                 f"{self.vendors[e.vendor_id].name}.")
+
+    def _claude_reads(self, e: Event) -> list[str]:
+        """Claude reads the email: each red flag with its quote, checked against the email's text. Nothing it says
+        carries weight, so the decisions stay those of the measured rules."""
+        v = self.vendors[e.vendor_id]
+        conv = self.mem.conversation("inbox") if self.reader.store is not None else None
+        res = self.reader.read_email(v.name, v.domain, e.data, conv)
+        lines = [f"Claude reads it: {f.kind.replace('_', ' ')}, \"{f.quote}\" ({f.why})" for f in res.items]
+        if res.dropped:
+            lines.append(f"Claude: {_n(len(res.dropped), 'flag')} dropped, the quote is not in the email")
+        if res.note:
+            lines.append(f"Claude: {res.note}")
+        return lines or ["Claude reads it: no red flag it can quote"]
 
     def _check_known(self, e: Event, agent) -> None:
         """Week 3, round 5's rule: a value in the event that the consortium lists as confirmed attacker infrastructure
@@ -409,6 +425,8 @@ class Lane:
                 title = (f"{first_fail[e.vendor_id]:%a %H:%M} · {total_fails[e.vendor_id]} failed portal logins "
                          f"within a minute from {e.data['device']} ({e.data['country']})")
             step = Step(agent, title, self._signal_lines(self.mem.written[w0:]))
+            if e.kind == "email" and self.reader is not None:
+                step.lines += self._claude_reads(e)
             if e.kind == "bank_change_request":
                 self.requests[e.vendor_id] = e
                 if self.mode != "siloed":              # in silos there is no shared case history to ask
@@ -594,7 +612,7 @@ def _event_title(e: Event) -> str:
 class Story:
     """Both lanes, advanced one chapter at a time."""
 
-    def __init__(self, make_store=LocalMeko, run_id: str | None = None, make_ledger=SqliteLedger):
+    def __init__(self, make_store=LocalMeko, run_id: str | None = None, make_ledger=SqliteLedger, reader=None):
         """`make_store` builds the Meko lane's store (real Meko or the simulator), `make_ledger` its ledger (Postgres in
         Meko, or SQLite). The siloed lane always runs on the simulator, with no ledger: it stands for separate tools
         with no shared memory."""
@@ -606,6 +624,9 @@ class Story:
         self.done: list[tuple[Chapter, dict[str, Outcome]]] = []
         self.act: dict[str, Lane] = {}                 # week 3: Weller on its own and in the consortium
         meko = self.lanes["learning2"]
+        self.reader = meko.reader = reader              # Claude, when there is a key (`reader.Reader.from_env`)
+        if reader is not None and not isinstance(meko.store, Replayer):   # a replay holds only recorded calls
+            reader.store, reader.datapack = meko.store, meko.mem.signals_dp
         for doc in sorted(KNOWLEDGE.glob("*.md")):     # the company's policy and playbook, in Meko's knowledge base
             meko.store.knowledge_upload(meko.mem.patterns_dp, doc.name, doc.read_bytes())
 
@@ -635,8 +656,25 @@ class Story:
                 if notes and mode == "learning2":
                     notes.append(self._save_report(lane, "V001", notes))
                     learning = self.self_learning(lane, "V001")
-                out[mode] = Outcome(ch.key, [], "", notes=notes, learning=learning)
+                claude = self._claude_explains(lane, "V001") if notes and lane.reader is not None else []
+                out[mode] = Outcome(ch.key, [], "", notes=notes, learning=learning, claude=claude)
         self.done.append((ch, out))
+
+    @staticmethod
+    def _claude_explains(lane: Lane, vendor_id: str) -> list[str]:
+        """Claude's plain account of the first protective decision on a vendor, from its trace; sentences citing
+        something the trace does not hold are dropped before they are shown."""
+        d = next((x for x in lane.log if x["vendor_id"] == vendor_id and x["outcome"] != "allow"), None)
+        if d is None:
+            return []
+        conv = lane.mem.conversation("auditor") if lane.reader.store is not None else None
+        res = lane.reader.explain(d, lane.vendors[vendor_id].name, conv)
+        lines = [s["text"] for s in res.items]
+        if res.dropped:
+            lines.append(f"({_n(len(res.dropped), 'sentence')} dropped: it cited something the trace does not hold)")
+        if res.note:
+            lines.append(f"Claude: {res.note}")
+        return lines
 
     def _start_act(self) -> None:
         """Week 3: Weller's two teams, both with Meko inside the company. They run on the offline simulator whatever
