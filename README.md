@@ -102,7 +102,7 @@ datapack with the accounts, phones and devices each member's analyst confirmed, 
 behind it, while approved patterns and case files go into each member's collective memory and knowledge base; a
 member can take a case back with a revocation record, and nothing is deleted. Token
 tracking works against the live service but is not used by the agents yet. Feature by feature, with the code that uses each:
-`docs/MEKO_USAGE.md`. Six decisions explained from their traces, the last one across two companies: `docs/TRACES.md`. What the live service actually
+`docs/MEKO_USAGE.md`. How the pieces fit, with two diagrams: `docs/ARCHITECTURE.md`. Six decisions explained from their traces, the last one across two companies: `docs/TRACES.md`. What the live service actually
 returned: `docs/MEKO_SMOKE.md`.
 
 ## Honest notes
