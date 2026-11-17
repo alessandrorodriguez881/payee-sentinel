@@ -109,7 +109,8 @@ Week 3 always runs on the simulator, so a recorded run of weeks 1-2 stays valid.
 | `payee_sentinel/evaluate.py` | The measured rounds (pre-registered in `docs/HYPOTHESES.md`, results in `docs/RESULTS.md`) |
 | `payee_sentinel/ledger.py` | The ledger: Postgres in Meko AMP, or SQLite |
 | `payee_sentinel/reader.py` | Claude: reads emails and explains decisions, checked in code |
+| `payee_sentinel/tokens.py` | The token table: what Claude reads to explain the same decision with and without Meko (needs a key) |
 | `payee_sentinel/context/` | The three engines behind one interface (`base.py`) |
 | `payee_sentinel/knowledge/` | The company's payment policy and fraud playbook, uploaded to Meko's knowledge base (invented) |
-| `app.py` | The Streamlit demo |
-| `scripts/` | Smoke test of real Meko, recording a real run, and the trace walkthroughs of `docs/TRACES.md` |
+| `app.py` | The Streamlit demo; it opens on the recorded real-Meko run (deployment: `docs/DEPLOY.md`) |
+| `scripts/` | Smoke test of real Meko, recording a real run, the trace walkthroughs of `docs/TRACES.md`, the token table |

@@ -1,20 +1,34 @@
-# Payee Sentinel (working name)
+# Payee Sentinel
 
-Accounts-payable agents that share what they see through [Meko](https://mekodata.ai), so that a vendor-account
+Accounts-payable agents that share what they see through [Meko](https://mekodata.ai), so that a supplier-account
 takeover is stopped before the money leaves. Built for ContextCon: Remember Everything (theme 03, "Remember the
 Attacker").
 
-> **Status, 9 Nov 2026: work in progress.** The synthetic world, the agents, the measurement (five rounds) and a first
-> demo screen exist. The demo runs offline, as a replay of a run recorded on real Meko, or live on real Meko. On empty
-> datapacks the real run reaches the same outcome as offline; once earlier runs fill the datapacks, their
-> near-identical memories outrank a new run's and the Meko lane misses its own signals (`docs/MEKO_SMOKE.md`). Still
-> to come: Claude reading the emails, the video and a public demo link.
+**Try it:** `pip install -r requirements.txt`, then `streamlit run app.py`. No key is needed: the demo opens on a
+replay of a run recorded on real Meko.
 
-## The idea
-A vendor takeover arrives in pieces: a password reset on the supplier portal from a new device, a changed contact
-phone through the support line, an email asking to pay a new IBAN "before Friday". Each piece reaches a different
-system and looks harmless on its own. Here every channel has an agent that writes what looks risky to shared memory
-in Meko, and the agents that apply bank changes or release payments search that memory first.
+## The attack
+A supplier's account is taken over in pieces, and each piece reaches a different system:
+- **Monday, the supplier portal:** logins from a new device abroad, a password reset, a new contact email and phone.
+- **Tuesday, the inbox and the vendor master:** an email asks to pay a new IBAN before Friday. The clerk calls the
+  number on file to confirm, and since Monday that number is the attacker's.
+- **Thursday, the payment run:** the money leaves. Each step looked routine to the one system that saw it.
+
+Here every channel has an agent that writes what looks risky to shared memory in Meko, and the agents that change bank
+details or release payments search that memory first. Rules decide, a person approves what becomes collective memory,
+and every decision is saved in Meko as a trace with its reasoning.
+
+## Key numbers
+| What | Result | Source |
+|---|---|---|
+| The demo, weeks 1-2 | Agents in silos send **€85,250** to the attackers; the same agents sharing memory in Meko send **€0** | the app; `tests/test_app.py`, also on the run recorded on real Meko (9 Nov 2026) |
+| The demo, week 3 | Another company of the consortium freezes the vendor **21 hours before** the attacker asks for new bank details | the app; `tests/test_app.py` |
+| A fair comparison, 320 attacks (round 4) | With best practices in every lane, silos stop 305 and shared memory 319; money lost falls from €710,177 to **€12,535**, at about 4 frictions per six-week period | `docs/RESULTS.md` |
+| A consortium, 160 attacks (round 5) | **41-61** stopped before the attacker asks for new bank details, against 27 for a company on its own | `docs/RESULTS.md` |
+| The problem | **$2.77 billion** in business email compromise losses reported to the FBI's IC3 in 2024 | FBI IC3, *2024 Internet Crime Report* (link below) |
+
+The measured rounds use synthetic data on the offline simulator of Meko. Hypotheses were written before each run, and
+the ones that failed are reported too.
 
 ## Why it matters
 Redirecting a supplier's payments is one of the costliest frauds companies face, and it is the case this project
@@ -29,9 +43,58 @@ models (a vendor's account taken over, then a request to pay a new IBAN):
   other non-personal accounts (UK Finance, *Annual Fraud Report 2025*, press release of 28 May 2025, https://www.ukfinance.org.uk/news-and-insight/press-release/fraud-report-2025-press-release).
 
 These figures cover more than vendor takeovers; they show the scale of the problem, not the share this project would
-prevent. Each was checked at its source on 11 Nov 2026. The project's own numbers below come from synthetic data.
+prevent. Each was checked at its source on 11 Nov 2026.
 
-## What is measured so far (synthetic data, offline Meko simulator)
+## The demo
+The demo replays the same two weeks for two teams of agents with the same rules: week 1, a takeover of Nordwind
+Logistik's supplier-portal account; week 2, the same crew on Bergmann Verpackung. After week 1 a person can promote
+the confirmed attack pattern to Meko's collective memory, and week 2 shows what changes. Week 3 moves to Weller
+Maschinenbau, another company of the same consortium: the crew comes back with a new device, address and phone but the
+mule account of the Nordwind case. Weller runs the same agents twice, on its own and with what Hallberg's analyst
+confirmed and a person approved (round 5's rule, the same weights). On its own it stops the attack at Tuesday's
+callback, after the request; in the consortium, Hallberg's approved pattern freezes the vendor on Monday afternoon, 21
+hours before the attacker asks for new bank details, and on Tuesday the mule account comes up with the trace of
+Hallberg's decision. Week 3 always runs on the offline simulator, so the recorded run of weeks 1-2 stays valid.
+
+Three engines answer the agents, and the sidebar switches between them:
+- **Replay of a recorded run** (the default when a recording exists): the answers real Meko gave in one run recorded
+  on 9 Nov 2026 on emptied datapacks, call by call (`payee_sentinel/context/replay.py`). A visitor sees what real Meko
+  answered without a key and without spending the account's quota. That run had the same outcome as offline, and
+  Meko's self-learning loop took the agents' weak question from low to mid. `docs/TRACES.md` is generated from it.
+- **Offline simulator** (`payee_sentinel/context/local.py`): the same calls in memory, with no key.
+- **Real Meko, live**: with a `MEKO_API_KEY` in `.env` (see `.env.example`). `python scripts/meko_smoke.py` checks
+  every Meko feature used here against the real service, and `python scripts/record_run.py --real` records a new run
+  into `recordings/` (do it once, on empty datapacks).
+
+**Claude (optional).** With `ANTHROPIC_API_KEY` set, Claude Opus 5.5 reads each email for the Meko lane's inbox agent,
+quoting the words behind every red flag, and explains the auditor's decision in plain words. Quotes not found in the
+email, and sentences citing a memory or a number the trace does not hold, are dropped in code. Claude's flags carry no
+weight, so the decisions stay those of the measured rules (`payee_sentinel/reader.py`). Without a key nothing changes.
+`python scripts/token_table.py` measures what Claude reads to explain the same decisions with and without Meko; it
+needs the key.
+
+How the public demo is deployed, and what must never go into its secrets: `docs/DEPLOY.md`.
+
+## How Meko is used
+Datapacks, per-agent conversations, decision traces for every decision (allow included, each with the query and the
+memories behind it), memory with metadata, hybrid search, promotion by a person, collective memory, the knowledge base
+(the company's payment policy, quoted by the auditor, and confirmed case files), artifacts (one report per case),
+`context_search`, and Meko's self-learning loop: Meko grades each open question an agent asks it, the auditor adds
+the missing context after a confirmed case, and Meko replays the weak question to check the fix. Postgres inside the
+context: the ledger (vendor master with its history, bank-change requests, payments) is a Postgres database in a Meko
+datapack, every record linked to the decision trace behind it, with a SQLite copy where that database cannot be
+reached (`payee_sentinel/ledger.py`). Sharing between companies (week 3, simulated in one place): a `consortium`
+datapack with the accounts, phones and devices each member's analyst confirmed, every entry with the decision trace
+behind it, while approved patterns and case files go into each member's collective memory and knowledge base; a
+member can take a case back with a revocation record, and nothing is deleted. Token tracking: with an Anthropic key,
+the tokens of every Claude call go to Meko against the agent's conversation (`track_token_usage`), except in a replay,
+which holds only the recorded calls.
+
+Feature by feature, with the code that uses each: `docs/MEKO_USAGE.md`. How the pieces fit, with two diagrams:
+`docs/ARCHITECTURE.md`. Seven decisions explained from their traces, the last one across two companies:
+`docs/TRACES.md`. What the live service actually returned: `docs/MEKO_SMOKE.md`.
+
+## What is measured (synthetic data, offline Meko simulator)
 20 six-week periods, 60 vendors each, 160 planted attacks and 400 legitimate look-alike cases
 (`docs/HYPOTHESES.md` was written before the run; `docs/RESULTS.md` has everything, including what failed):
 
@@ -72,38 +135,6 @@ python -m pytest -q
 streamlit run app.py                                  # the demo: siloed agents vs Meko, then a consortium
 python -m payee_sentinel.evaluate --seeds 1-5         # the measurement
 ```
-The demo replays the same two weeks for two teams of agents with the same rules: week 1, a takeover of Nordwind
-Logistik's supplier-portal account; week 2, the same crew on Bergmann Verpackung. After week 1 a person can promote
-the confirmed attack pattern to Meko's collective memory, and week 2 shows what changes. Week 3 moves to Weller
-Maschinenbau, another company of the same consortium: the crew comes back with a new device, address and phone but the
-mule account of the Nordwind case. Weller runs the same agents twice, on its own and with what Hallberg's analyst
-confirmed and a person approved (round 5's rule, the same weights). On its own it stops the attack at Tuesday's callback,
-after the request; in the consortium, Hallberg's approved pattern freezes the vendor on Monday afternoon, 21 hours
-before the attacker asks for new bank details, and on Tuesday the mule account comes up with the trace of Hallberg's
-decision. Week 3 always runs on the offline simulator, so the recorded run of weeks 1-2 stays valid.
-Without a `MEKO_API_KEY` everything runs on the offline simulator (`payee_sentinel/context/local.py`). With a key in
-`.env` (see `.env.example`), `python scripts/meko_smoke.py` checks every Meko feature used here against the real service.
-`python scripts/record_run.py --real` records one run on real Meko, call by call, into `recordings/` (do it once, on
-empty datapacks); the demo then offers it as a replay, so a visitor sees what real Meko answered without a key and
-without spending the account's quota (`payee_sentinel/context/replay.py`). The repo holds one, recorded on 9 Nov 2026
-on emptied datapacks (`recordings/`): the same outcome as offline, and Meko's self-learning loop took the agents'
-weak question from low to mid. `docs/TRACES.md` is generated from that recording.
-
-## How Meko is used
-Datapacks, per-agent conversations, decision traces for every decision (allow included, each with the query and the
-memories behind it), memory with metadata, hybrid search, promotion by a person, collective memory, the knowledge base
-(the company's payment policy, quoted by the auditor, and confirmed case files), artifacts (one report per case),
-`context_search`, and Meko's self-learning loop: Meko grades each open question an agent asks it, the auditor adds
-the missing context after a confirmed case, and Meko replays the weak question to check the fix. Postgres inside the
-context: the ledger (vendor master with its history, bank-change requests, payments) is a Postgres database in a Meko
-datapack, every record linked to the decision trace behind it, with a SQLite copy where that database cannot be
-reached (`payee_sentinel/ledger.py`). Sharing between companies (week 3, simulated in one place): a `consortium`
-datapack with the accounts, phones and devices each member's analyst confirmed, every entry with the decision trace
-behind it, while approved patterns and case files go into each member's collective memory and knowledge base; a
-member can take a case back with a revocation record, and nothing is deleted. Token
-tracking works against the live service but is not used by the agents yet. Feature by feature, with the code that uses each:
-`docs/MEKO_USAGE.md`. How the pieces fit, with two diagrams: `docs/ARCHITECTURE.md`. Six decisions explained from their traces, the last one across two companies: `docs/TRACES.md`. What the live service actually
-returned: `docs/MEKO_SMOKE.md`.
 
 ## Honest notes
 - All data is invented. IBANs have valid check digits around random account numbers.
@@ -112,6 +143,9 @@ returned: `docs/MEKO_SMOKE.md`.
   its own trusts a callback to a number the attacker put on file the day before.
 - The offline simulator ranks memories by shared words and exact entities; real Meko adds semantic search and
   extracts facts with an LLM. Results from each are reported separately.
+- Real Meko reaches the offline outcome on empty datapacks. Once earlier runs fill the datapacks, their near-identical
+  memories outrank a new run's and the Meko lane misses its own signals (`docs/MEKO_SMOKE.md`); that is why the demo
+  replays one clean recorded run.
 - The Meko MCP client follows the reference client in
   [yugabyte/canned-agents](https://github.com/yugabyte/canned-agents) (Apache-2.0).
 - Week 3 is one illustrative case, not the measurement. Its crew also asks for the open invoices on Monday, and that
