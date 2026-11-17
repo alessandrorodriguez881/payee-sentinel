@@ -13,8 +13,12 @@ def _button(at, starts):
 def test_click_through_the_story_with_a_promotion(monkeypatch):
     monkeypatch.delenv("MEKO_API_KEY", raising=False)
     monkeypatch.setattr("payee_sentinel.context.load_env", lambda *a, **k: None)
+    monkeypatch.setattr("payee_sentinel.context.replay.latest_recording", lambda *a, **k: None)   # the simulator
     at = AppTest.from_file(APP, default_timeout=60).run()
     assert not at.exception
+    ends = {"Agents in silos (today)": "€85,250", "Agents sharing memory in Meko": "€0",
+            "Week 3, another company": "21 hours early"}   # the first screen tells where the story ends: checked below
+    assert {m.label: m.value for m in at.metric if m.label in ends} == ends
     for step in range(4):                                # Monday, Tuesday, payment run, audit
         _button(at, "Next:").click()
         at.run()
@@ -47,6 +51,40 @@ def test_click_through_the_story_with_a_promotion(monkeypatch):
     at.run()
     assert not at.exception
     assert any("took back the Nordwind Logistik GmbH case: 2 values left the shared list" in i.value for i in at.info)
+
+
+def test_the_public_demo_opens_on_the_real_meko_recording(monkeypatch):
+    """What a visitor without a key gets: the replay of the run recorded on real Meko, from the first screen's Start
+    button to the end of week 3."""
+    monkeypatch.delenv("MEKO_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr("payee_sentinel.context.load_env", lambda *a, **k: None)
+    at = AppTest.from_file(APP, default_timeout=60).run()
+    assert not at.exception
+    assert at.radio[0].value == "Replay of a recorded run"
+    assert any("Replay of a real Meko run recorded 2026-11-09" in c.value for c in at.caption)
+    assert any("You are watching a replay of a run recorded on real Meko" in c.value for c in at.caption)
+    assert any("Ledger: a local SQLite copy" in c.value for c in at.caption)   # no Postgres details, no problem
+    _button(at, "Start on Monday morning").click()
+    at.run()
+    assert not at.exception
+    assert at.subheader[0].value == "Monday · the supplier portal"
+    for _ in range(3):                                   # Tuesday, payment run, audit
+        _button(at, "Next:").click()
+        at.run()
+        assert not at.exception
+    assert any("**low → mid**" in m.value for m in at.markdown)        # what real Meko's self-learning loop did
+    assert _button(at, "Next:").disabled                 # in the recorded run a person promoted the pattern here
+    _button(at, "Promote to collective memory").click()
+    at.run()
+    while (b := next((b for b in at.button if b.label.startswith("Next:")), None)) and not b.disabled:
+        b.click()
+        at.run()
+        assert not at.exception
+        if at.subheader[0].value == "Two weeks later":
+            assert sorted(m.value for m in at.metric if m.label == "Sent to the attackers") == ["€0", "€85,250"]
+    assert at.subheader[0].value == "What the consortium shares"
+    assert any("frozen Mon 30 Nov 13:20, 21 hours before the attacker asked" in m.value for m in at.markdown)
 
 
 def test_the_demo_replays_a_recorded_run(monkeypatch, tmp_path):

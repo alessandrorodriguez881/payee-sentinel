@@ -24,6 +24,7 @@ HAS_KEY = os.environ.get("MEKO_API_KEY", "").startswith("mko_tkn_")
 RECORDING = latest_recording()
 SIMULATOR, REPLAY, LIVE = "Offline simulator", "Replay of a recorded run", "Real Meko, live"
 ENGINES = [SIMULATOR] + ([REPLAY] if RECORDING else []) + ([LIVE] if HAS_KEY else [])
+DEFAULT_ENGINE = REPLAY if RECORDING else SIMULATOR     # a visitor first sees what real Meko answered, with no key
 TARGET_RUN = {"V001": RUNS["run1"], "V002": RUNS["run2"]}
 ALERT = {"good": st.success, "bad": st.error, "warn": st.warning, "neutral": st.info}
 ICON = {"good": ":material/verified_user:", "bad": ":material/money_off:", "warn": ":material/schedule:",
@@ -60,8 +61,8 @@ def stopped(at: datetime | None, asked: datetime, verb: str) -> str:
 
 ss = st.session_state
 if "story" not in ss:
-    ss.engine = SIMULATOR
-    ss.story = new_story(SIMULATOR)
+    ss.engine = DEFAULT_ENGINE
+    ss.story = new_story(DEFAULT_ENGINE)
 story: Story = ss.story
 meko_lane = story.lanes["learning2"]
 replaying = isinstance(meko_lane.store, Replayer)
@@ -69,6 +70,11 @@ replaying = isinstance(meko_lane.store, Replayer)
 
 def promote_pattern() -> None:
     story.promote("V001")
+
+
+def start() -> None:
+    """The first screen's own Start button: the same step as Next in the sidebar, which phones keep folded away."""
+    ss.start = True
 
 
 # ---------- sidebar: the controls stay in one place ----------
@@ -109,7 +115,7 @@ if engine != ss.engine or restart:
         ss.story = new_story(engine)
     st.rerun()
 
-if clicked and nxt:
+if (ss.pop("start", False) or clicked) and nxt:
     with st.status(f"Agents at work: {nxt.title}") as status:
         try:
             story.advance()
@@ -125,23 +131,48 @@ story_tab, meko_tab, results_tab = st.tabs(["Story", "What Meko recorded", "Meas
 # ---------- the story ----------
 with story_tab:
     if not story.done:
-        st.subheader("Two teams of agents, the same two weeks")
-        st.markdown(
-            f"**{BUYER}** pays its suppliers every Thursday. Two teams of agents watch the same events with "
-            f"the same rules. On the left, each agent keeps its own memory, as separate tools do today. On the right, "
-            f"they share it through **Meko**: what one agent writes, the others find before they act. In week 3 "
-            f"the crew moves on to another company of the same consortium.")
-        cast = st.columns(3)
-        cast[0].markdown("**Portal agent** — logins, password resets and contact changes on the supplier portal\n\n"
-                         "**Inbox agent** — emails to accounts payable")
-        cast[1].markdown("**Vendor-master agent** — bank-change requests and the clerk's callbacks\n\n"
-                         "**Payments agent** — the Thursday payment run")
-        cast[2].markdown("**Auditor agent** — explains each decision from its trace\n\n"
-                         "**Analyst** — a person who confirms cases and approves what becomes shared knowledge")
+        st.subheader("A supplier's account is taken over. Who notices?")
+        st.markdown(f"**{BUYER}** pays its suppliers every Thursday. This week someone takes over the account of one "
+                    f"of them, Nordwind Logistik. Each step of the attack reaches a different system, and each looks "
+                    f"routine there:")
+        days = st.columns(3, border=True)
+        days[0].markdown("**Monday · the supplier portal**\n\nSix failed logins from a new device in Nigeria, a "
+                         "password reset, then a new contact email and phone. Only the portal sees it.")
+        days[1].markdown("**Tuesday · the inbox and the vendor master**\n\nAn email from the new address asks to pay a "
+                         "new IBAN before Friday. The clerk calls the number on file to confirm: since Monday, it is "
+                         "the attacker's.")
+        days[2].markdown("**Thursday · the payment run**\n\n€48,300 leaves for the attackers' account. Nobody notices "
+                         "until Nordwind asks where its money is.")
+        st.markdown("Two teams of agents watch the same events with the same rules. **On the left, each agent keeps "
+                    "its own memory**, as separate tools do today. **On the right, they share it through Meko**: what "
+                    "one agent writes, the others find before they act. Where the story ends:")
+        ends = st.columns(3)
+        for col, (label, value, note) in zip(ends, (
+                ("Agents in silos (today)", "€85,250", "sent to the attackers in two weeks"),
+                ("Agents sharing memory in Meko", "€0", "the bank change is blocked at Tuesday's callback"),
+                ("Week 3, another company", "21 hours early", "the vendor is frozen before the attacker asks for new "
+                                                             "bank details, by what the first company confirmed"))):
+            col.metric(label, value, border=True)
+            col.caption(note)
+        st.markdown("**How:** every agent writes what looks risky to shared memory in Meko and searches it before it "
+                    "acts. Rules decide (a bank change is blocked at risk 6); a person confirms cases and approves "
+                    "what becomes collective memory; every decision is saved in Meko as a trace, with its reasoning.")
+        st.button("Start on Monday morning", type="primary", icon=":material/play_arrow:", on_click=start)
+        recorded = "" if not replaying else (
+            f"You are watching a replay of a run recorded on real Meko on {meko_lane.store.recorded_at[:10]}: the same "
+            f"calls, the answers Meko gave. Week 3 runs on the offline simulator. ")
+        st.caption(f"{recorded}{len(CHAPTERS)} steps; Next in the sidebar moves on. All data is invented.")
+        with st.expander("Who is who", icon=":material/groups:"):
+            cast = st.columns(3)
+            cast[0].markdown("**Portal agent** — logins, password resets and contact changes on the supplier portal\n\n"
+                             "**Inbox agent** — emails to accounts payable")
+            cast[1].markdown("**Vendor-master agent** — bank-change requests and the clerk's callbacks\n\n"
+                             "**Payments agent** — the Thursday payment run")
+            cast[2].markdown("**Auditor agent** — explains each decision from its trace\n\n"
+                             "**Analyst** — a person who confirms cases and approves what becomes shared knowledge")
         st.caption("Why it matters: business email compromise losses reported to the FBI reached $2.77 billion in 2024 "
                    "(FBI IC3, 2024 Internet Crime Report), and 45 % of the 521 finance professionals in the AFP's 2025 "
                    "Payments Fraud and Control Survey cited vendor-imposter fraud. Sources in the README.")
-        st.info("Press **Next** in the sidebar to start on Monday morning.", icon=":material/arrow_back:")
     else:
         ch, outcomes = story.done[-1]
         st.subheader(ch.title)
