@@ -25,6 +25,7 @@ import anthropic
 
 MODEL = os.environ.get("PAYEE_SENTINEL_MODEL", "claude-opus-5-5")   # $4 in / $20 out per million tokens (Nov 2026)
 FALLBACK_BETA = "server-side-fallback-2026-07-01"                   # on a refusal, the API retries on another model
+MAX_TOKENS = 4000                 # per answer, thinking included
 KINDS = ("pressure", "payment_change", "contact_change", "impersonation", "inconsistency", "other")
 MIN_QUOTE = 12                    # characters: a shorter quote matches too easily to prove anything
 NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
@@ -67,6 +68,13 @@ EXPLAIN_SYSTEM = """You explain one decision of an accounts-payable agent to a r
 most four short sentences. Use only the facts given: the decision, its rule, its risk score and the signals behind it, \
 each with its memory id. With each sentence, list the memory ids of the signals it relies on (none when it relies only \
 on the rule or the decision). Add no number, name or fact that is not in the facts given."""
+
+# The same question without Meko (`payee_sentinel.tokens`): no signals and no trace, only each system's own records.
+RECORDS_SYSTEM = """You explain one decision of an accounts-payable agent to a reader who is not an engineer, in at \
+most four short sentences. You get the decision and its rule, then the raw records of the company's systems (supplier \
+portal, inbox, support line, vendor master, invoices), one per line with its record id. Find the records that explain \
+the decision and use only those. With each sentence, list in memory_ids the ids of the records it relies on (none when \
+it relies only on the rule or the decision). Add no number, name or fact that is not in the records given."""
 
 
 @dataclass
@@ -117,7 +125,7 @@ class Reader:
              name: str) -> tuple[dict | None, dict, str]:
         try:
             response = self.client.beta.messages.create(
-                model=self.model, max_tokens=4000, betas=[FALLBACK_BETA], fallbacks="default", system=system,
+                model=self.model, max_tokens=MAX_TOKENS, betas=[FALLBACK_BETA], fallbacks="default", system=system,
                 messages=[{"role": "user", "content": user}],
                 output_config={"format": {"type": "json_schema", "schema": schema}, "effort": "medium"})
         except anthropic.APIConnectionError:
@@ -179,15 +187,24 @@ class Reader:
     def explain(self, decision: dict, vendor: str, conversation_id: str | None = None) -> Result:
         """A plain-language account of one decision. Sentences that cite a memory id or a number the trace does not
         hold are dropped."""
-        facts = self.facts(decision, vendor)
-        data, usage, note = self._ask(EXPLAIN_SYSTEM, facts, EXPLAIN_SCHEMA, conversation_id, "auditor: explain")
-        result = Result([], usage=usage, note=note)
         ids = {s.memory_id for s in decision["signals"] if s.memory_id}
-        numbers = set(NUMBER.findall(_without(facts, ids)))   # memory ids are random: their digits prove nothing
+        return self.explain_facts(self.facts(decision, vendor), ids, f"{vendor}: {decision['what']}", conversation_id)
+
+    def explain_facts(self, facts: str, ids: set[str], about: str, conversation_id: str | None = None,
+                      system: str = EXPLAIN_SYSTEM, exact_ids: bool = False) -> Result:
+        """Explain a decision from the facts given, and keep only the sentences that hold up: every id a sentence
+        cites is among `ids` (a memory id may be cited by its first 8 characters; with `exact_ids`, a record id only
+        whole), and every number it uses is in the facts."""
+        data, usage, note = self._ask(system, facts, EXPLAIN_SCHEMA, conversation_id, "auditor: explain")
+        result = Result([], usage=usage, note=note)
+        numbers = set(NUMBER.findall(_without(facts, ids)))   # ids are labels: their digits prove nothing
         for s in (data or {}).get("sentences", []):
             text = str(s.get("text", "")).strip()
             cited = [str(m) for m in s.get("memory_ids", [])]
-            unknown = [m for m in cited if len(m) < 8 or not any(i.startswith(m) or m.startswith(i) for i in ids)]
+            if exact_ids:
+                unknown = [m for m in cited if m not in ids]
+            else:
+                unknown = [m for m in cited if len(m) < 8 or not any(i.startswith(m) or m.startswith(i) for i in ids)]
             invented = [n for n in NUMBER.findall(_without(text, ids)) if n not in numbers]
             if not text:
                 continue
@@ -197,6 +214,6 @@ class Reader:
                 result.dropped.append((s, f"uses numbers the trace does not hold: {', '.join(invented)}"))
             else:
                 result.items.append(dict(text=text, memory_ids=cited))
-        self.calls.append(dict(job="explain", about=f"{vendor}: {decision['what']}", kept=len(result.items),
-                               dropped=len(result.dropped), note=note, **usage))
+        self.calls.append(dict(job="explain", about=about, kept=len(result.items), dropped=len(result.dropped),
+                               note=note, **usage))
         return result

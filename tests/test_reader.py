@@ -139,6 +139,44 @@ def test_a_replay_with_claude_still_matches_the_recording():
     assert replay.pos == len(replay.entries) and story.reader.store is None   # no token calls in a replay
 
 
+def test_the_installed_sdk_sends_and_reads_what_reader_expects():
+    """The path a real key will take, checked offline: the anthropic SDK builds Reader's request (beta header,
+    server-side fallbacks, the answer's schema, effort) and parses a reply, through a mock transport. Token counting
+    goes the same way."""
+    import httpx2                                       # the HTTP library this SDK version is built on
+    seen = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(dict(path=request.url.path, beta=request.headers.get("anthropic-beta", ""),
+                         body=json.loads(request.content)))
+        if request.url.path.endswith("/count_tokens"):
+            return httpx2.Response(200, json={"input_tokens": 321})
+        answer = dict(sentences=[dict(text="The vendor-master agent blocked the bank change.", memory_ids=[])])
+        return httpx2.Response(200, json={
+            "id": "msg_test", "type": "message", "role": "assistant", "model": MODEL,
+            "content": [{"type": "thinking", "thinking": "", "signature": "x"},
+                        {"type": "text", "text": json.dumps(answer)}],
+            "stop_reason": "end_turn", "stop_sequence": None, "usage": {"input_tokens": 900, "output_tokens": 120}})
+
+    client = anthropic.Anthropic(api_key="test-key", max_retries=0,
+                                 http_client=httpx2.Client(transport=httpx2.MockTransport(handler)))
+    story = Story(LocalMeko)
+    for ch in CHAPTERS[:2]:
+        story.advance()
+    block = next(d for d in story.lanes["learning2"].log if d["outcome"] == "block")
+    result = Reader(client).explain(block, VENDORS["V001"].name)
+    assert [s["text"] for s in result.items] == ["The vendor-master agent blocked the bank change."]
+    assert result.usage == dict(model=MODEL, input_tokens=900, output_tokens=120) and not result.note
+    req = seen[0]
+    assert req["path"] == "/v1/messages" and "server-side-fallback-2026-07-01" in req["beta"]
+    assert req["body"]["fallbacks"] == "default" and req["body"]["model"] == "claude-opus-5-5"
+    assert req["body"]["output_config"]["format"]["type"] == "json_schema"
+    assert req["body"]["output_config"]["effort"] == "medium" and req["body"]["max_tokens"] == 4000
+    counted = client.messages.count_tokens(model=MODEL, system="s", messages=[{"role": "user", "content": "u"}],
+                                           output_config={"format": {"type": "json_schema", "schema": {}}})
+    assert counted.input_tokens == 321 and seen[1]["path"] == "/v1/messages/count_tokens"
+
+
 def test_without_a_key_there_is_no_reader(monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     assert Reader.from_env() is None

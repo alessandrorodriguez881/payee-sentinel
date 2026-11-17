@@ -25,10 +25,10 @@ plainly which features are not used by the agents yet.
 These tools are on the live MCP server (57 tools on 9-Nov-2026, against 28 in the documentation we read on 8-Nov). The
 self-learning ones were found by listing the server's tools; their descriptions say only `context_search` calls count.
 
-## Checked against the live service, not used by the agents yet
-| Meko feature | Status | Planned use |
+## Wired, waiting for an Anthropic key
+| Meko feature | Status | Use |
 |---|---|---|
-| `track_token_usage` | Works (`docs/MEKO_SMOKE.md`) | Once Claude reads the emails and writes the explanations |
+| `track_token_usage` | Works against the live service (`docs/MEKO_SMOKE.md`); wired in `payee_sentinel/reader.py` and checked on the simulator (`tests/test_reader.py`); not yet run on live Meko with a real key | With `ANTHROPIC_API_KEY`, the tokens of every Claude call (the inbox agent's reading, the auditor's explanation) go to Meko against that agent's conversation. What Claude reads with and without Meko: `scripts/token_table.py`, which writes `docs/TOKENS.md` |
 
 ## What we learned about Meko along the way
 The live service and the offline simulator behave the same for everything above (`docs/MEKO_SMOKE.md`):
