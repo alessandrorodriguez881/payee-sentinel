@@ -29,7 +29,7 @@ from .context.base import now_iso
 from .context.local import LocalMeko
 from .context.replay import Replayer
 from .ledger import Ledger, SqliteLedger
-from .scenario import Event, Vendor, make_iban
+from .scenario import Event, Vendor, fictional_iban
 
 LANES = {"siloed": "Agents in silos (today)", "learning2": "Agents sharing memory in Meko"}
 KNOWLEDGE = Path(__file__).resolve().parent / "knowledge"
@@ -46,30 +46,31 @@ AGENT_NAMES = {"portal": "Portal agent", "inbox": "Inbox agent", "support": "Sup
 
 def _vendors() -> dict[str, Vendor]:
     rng = random.Random(2026)
-    spec = [("V001", "Nordwind Logistik GmbH", "DE", "nordwind-logistik.example", "+49 421 5530120", 40000),
-            ("V002", "Bergmann Verpackung GmbH", "DE", "bergmann-verpackung.example", "+49 711 2208840", 28000),
-            ("V003", "Van Dijk Elektro B.V.", "NL", "vandijk-elektro.example", "+31 206 1704550", 11000),
-            ("V004", "Bertoli Imballaggi S.r.l.", "IT", "bertoli-imballaggi.example", "+39 028 7219300", 7000),
-            ("V005", "Dupont Emballages SAS", "FR", "dupont-emballages.example", "+33 145 2017880", 19000),
-            ("V006", "Kessler Antriebe GmbH", "DE", "kessler-antriebe.example", "+49 894 4129070", 8500)]
-    return {vid: Vendor(vid, name, c, dom, f"accounts@{dom}", phone, make_iban(rng, c), name, [c],
+    spec = [("V001", "Nordwind Logistik GmbH", "DE", "nordwind-logistik.example", "+49 40 66969120", 40000),
+            ("V002", "Bergmann Verpackung GmbH", "DE", "bergmann-verpackung.example", "+49 69 90009840", 28000),
+            ("V003", "Van Dijk Elektro B.V.", "NL", "vandijk-elektro.example", "+49 221 4710550", 11000),
+            ("V004", "Bertoli Imballaggi S.r.l.", "IT", "bertoli-imballaggi.example", "+49 89 99998300", 7000),
+            ("V005", "Dupont Emballages SAS", "FR", "dupont-emballages.example", "+49 69 90009880", 19000),
+            ("V006", "Kessler Antriebe GmbH", "DE", "kessler-antriebe.example", "+49 89 99998070", 8500)]
+    return {vid: Vendor(vid, name, c, dom, f"accounts@{dom}", phone, fictional_iban(rng, c), name, [c],
                         [f"dev-{vid.lower()}a"], 14, mean, 30) for vid, name, c, dom, phone, mean in spec}
 
 
 VENDORS = _vendors()
 _rng = random.Random(7)
 CREW = {  # the attackers' side of each attack (hidden truth)
-    "V001": dict(device="dev-7f3a91", country="NG", email="finance.nordwind@mail.test", phone="+49 152 7781934",
-                 iban=make_iban(_rng, "LT")),
-    "V002": dict(device="dev-c41e02", country="RU", email="bergmann.ap@mailer.test", phone="+49 157 3304128",
-                 iban=make_iban(_rng, "LT")),
+    "V001": dict(device="dev-7f3a91", country="NG", email="finance.nordwind@mail.test", phone="+49 152 28817386",
+                 iban=fictional_iban(_rng, "LT")),
+    "V002": dict(device="dev-c41e02", country="RU", email="bergmann.ap@mailer.test", phone="+49 152 28895456",
+                 iban=fictional_iban(_rng, "LT")),
 }
 ATTACKER_IBANS = {c["iban"]: vid for vid, c in CREW.items()}
 BUYER2 = "Weller Maschinenbau GmbH"      # week 3: another member of the consortium
 VENDORS2 = {"V101": Vendor("V101", "Brenner Stahlbau GmbH", "DE", "brenner-stahlbau.example",
-                           "accounts@brenner-stahlbau.example", "+49 231 7740650", make_iban(random.Random(2027), "DE"), "Brenner Stahlbau GmbH", ["DE"],
+                           "accounts@brenner-stahlbau.example", "+49 221 4710650",
+                           fictional_iban(random.Random(2027), "DE"), "Brenner Stahlbau GmbH", ["DE"],
                            ["dev-v101a"], 14, 26000, 30)}
-CREW["V101"] = dict(device="dev-2b9d57", country="NG", email="brenner.finance@mail.test", phone="+49 151 6620417",
+CREW["V101"] = dict(device="dev-2b9d57", country="NG", email="brenner.finance@mail.test", phone="+49 152 54599371",
                     iban=CREW["V001"]["iban"])   # new device, address and phone; the Nordwind case's mule account
 ACT_LANES = {"alone": "Weller on its own (its agents share Meko inside the company)",
              "consortium": "Weller in the consortium (plus what Hallberg confirmed and approved)"}

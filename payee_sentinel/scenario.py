@@ -133,6 +133,20 @@ def make_iban(rng: random.Random, country: str) -> str:
     return f"{country}{check:02d}{bban}"
 
 
+# Where each country's bank code sits in the BBAN, and what blanks it. The story's IBANs keep valid check digits
+# around a bank code no bank has, so none can be a real account; the simulator's random ones exist only while it runs.
+NO_BANK = {"DE": (0, 8, "0"), "FR": (0, 5, "0"), "IT": (1, 6, "0"), "LT": (0, 5, "0"), "NL": (0, 4, "X")}
+
+
+def fictional_iban(rng: random.Random, country: str) -> str:
+    """`make_iban`, with the same random draws, then the bank code blanked and the check digits computed again."""
+    bban = make_iban(rng, country)[4:]
+    a, b, fill = NO_BANK[country]
+    bban = bban[:a] + fill * (b - a) + bban[b:]
+    digits = "".join(str(int(c, 36)) for c in bban + country + "00")
+    return f"{country}{98 - int(digits) % 97:02d}{bban}"
+
+
 def iban_is_valid(iban: str) -> bool:
     moved = iban[4:] + iban[:4]
     return int("".join(str(int(c, 36)) for c in moved)) % 97 == 1

@@ -2,7 +2,7 @@
  "engine": "real Meko",
  "run_id": "97e9e5fc",
  "recorded_at": "2026-11-09T10:00:51.914+00:00",
- "note": "On 17 Nov 2026 the invented e-mail addresses were moved to names reserved by RFC 2606 (mail.test, mailer.test), of the same length. Everything else is as real Meko answered on 9 Nov.",
+ "note": "On 17 Nov 2026 the invented e-mail addresses were moved to names reserved by RFC 2606 (mail.test, mailer.test), of the same length; the attackers' phone numbers to the Bundesnetzagentur's Drama Numbers and their IBANs to a bank code no bank has (valid check digits). Everything else is as real Meko answered on 9 Nov.",
  "entries": [
   {
    "method": "ensure_datapack",
@@ -829,7 +829,7 @@
   },
   {
    "method": "context_search",
-   "key": "Has the bank account LT735260181590830166 (Lithuania) or the device dev-7f3a91 appeared in an earlier confirmed fraud case? Bank-change request for Nordwind Logistik GmbH.",
+   "key": "Has the bank account LT320000081590830166 (Lithuania) or the device dev-7f3a91 appeared in an earlier confirmed fraud case? Bank-change request for Nordwind Logistik GmbH.",
    "result": {
     "memory": [],
     "knowledge_base": [],
@@ -842,7 +842,7 @@
      "tool": "context_search",
      "datapack": "03df6a6f-de80-4c4e-93fc-5ae51f060675",
      "conversation_id": "576c434770ad484eb4811a452bf2e6ac",
-     "summary": "Has the bank account LT735260181590830166 (Lithuania) or the device dev-7f3a91 appeared in an earlier confirmed fraud case? Bank-change request for Nordwind Logistik GmbH.",
+     "summary": "Has the bank account LT320000081590830166 (Lithuania) or the device dev-7f3a91 appeared in an earlier confirmed fraud case? Bank-change request for Nordwind Logistik GmbH.",
      "latency_ms": 12052.4,
      "tokens_sent": 1,
      "found": 0
@@ -863,7 +863,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.37979110434106356,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -871,12 +871,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -980,7 +980,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.3554064045954582,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -988,7 +988,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -1178,7 +1178,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.37978329711029696,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -1186,12 +1186,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -1295,7 +1295,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.3553948265231876,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -1303,7 +1303,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -1364,7 +1364,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.3514024992769989,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -1372,7 +1372,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -1512,7 +1512,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.3797794835342772,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -1520,12 +1520,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -1629,7 +1629,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.35538088037030213,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -1637,7 +1637,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -1698,7 +1698,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.3513937207836591,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -1706,7 +1706,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -1884,7 +1884,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.3797816993507654,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -1892,12 +1892,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -2001,7 +2001,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.3553931273189395,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -2009,7 +2009,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -2070,7 +2070,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.35139561099084515,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -2078,7 +2078,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -2328,7 +2328,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6031550721821621,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -2336,12 +2336,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -2352,7 +2352,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.593725732057023,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -2360,7 +2360,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -2375,7 +2375,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.5877133691598456,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -2383,7 +2383,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -2655,7 +2655,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6047010451973713,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -2663,12 +2663,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -2749,7 +2749,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.580387104838519,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -2757,7 +2757,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -2818,7 +2818,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.5635105944154961,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -2826,7 +2826,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -3064,7 +3064,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.5636791722958834,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -3072,12 +3072,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -3112,7 +3112,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.558503043669559,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -3120,7 +3120,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -3181,7 +3181,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.5404307285811828,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -3189,7 +3189,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -3404,7 +3404,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6247174135158828,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -3412,12 +3412,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -3475,7 +3475,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6017757993014324,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -3483,7 +3483,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -3498,7 +3498,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.590835111374814,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -3506,7 +3506,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -3996,7 +3996,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.37978383910099967,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -4004,12 +4004,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -4137,7 +4137,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.3553908126486459,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -4145,7 +4145,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -4206,7 +4206,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.351396428321463,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -4214,7 +4214,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -4434,11 +4434,11 @@
   },
   {
    "method": "search_log",
-   "key": "Has the bank account LT735260181590830166 (Lithuania) or the device dev-7f3a91 appeared in an earlier confirmed fraud case? Bank-change request for Nordwind Logistik GmbH.",
+   "key": "Has the bank account LT320000081590830166 (Lithuania) or the device dev-7f3a91 appeared in an earlier confirmed fraud case? Bank-change request for Nordwind Logistik GmbH.",
    "result": {
     "id": "06f870a0-fa84-4604-a52c-63a4daabdf70",
     "searched_at": "2026-11-09T09:58:16.191624Z",
-    "query": "Has the bank account LT735260181590830166 (Lithuania) or the device dev-7f3a91 appeared in an earlier confirmed fraud case? Bank-change request for Nordwind Logistik GmbH.",
+    "query": "Has the bank account LT320000081590830166 (Lithuania) or the device dev-7f3a91 appeared in an earlier confirmed fraud case? Bank-change request for Nordwind Logistik GmbH.",
     "band": "low",
     "best_score": null
    },
@@ -4680,7 +4680,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6515184623283579,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -4688,12 +4688,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -4797,7 +4797,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6091784927131862,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -4805,7 +4805,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -4843,7 +4843,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.5964897231805405,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -4851,7 +4851,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -5141,7 +5141,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6515184623283579,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -5149,12 +5149,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -5258,7 +5258,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6091784927131862,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -5266,7 +5266,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -5304,7 +5304,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.5964897231805405,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -5312,7 +5312,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -5625,7 +5625,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6515184623283579,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -5633,12 +5633,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -5742,7 +5742,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6091784927131862,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -5750,7 +5750,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -5788,7 +5788,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.5964897231805405,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -5796,7 +5796,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -6133,7 +6133,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6515184623283579,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -6141,12 +6141,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -6250,7 +6250,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6091784927131862,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -6258,7 +6258,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -6296,7 +6296,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.5964897231805405,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -6304,7 +6304,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -6641,7 +6641,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6532865338353687,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -6649,12 +6649,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -6781,7 +6781,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6120608892730204,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -6789,7 +6789,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -6827,7 +6827,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.5973059879088489,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -6835,7 +6835,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -6932,7 +6932,7 @@
     {
      "__hit__": {
       "id": "19644400-b2ac-49ca-9eff-fc1de8dce33d",
-      "text": "Risk signal portal.contact_change_new_device for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 157 3304128 from a device first seen in the last 72 hours. Evidence: V002-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28895456 from a device first seen in the last 72 hours. Evidence: V002-P4. Run 97e9e5fc-meko.",
       "score": 0.3717124789643549,
       "metadata": {
        "at": "2026-11-23T09:33:00",
@@ -6940,7 +6940,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 157 3304128 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28895456 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V002-P4"
@@ -7195,7 +7195,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6532865338353687,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -7203,12 +7203,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -7335,7 +7335,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6120608892730204,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -7343,7 +7343,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -7381,7 +7381,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.5973059879088489,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -7389,7 +7389,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -7474,7 +7474,7 @@
     {
      "__hit__": {
       "id": "00dc5491-7a4d-4ffd-b99b-a48e67d9ce74",
-      "text": "Risk signal contact.phone_changed for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 157 3304128 via the portal. Evidence: V002-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28895456 via the portal. Evidence: V002-P4. Run 97e9e5fc-meko.",
       "score": 0.3869584580384665,
       "metadata": {
        "at": "2026-11-23T09:33:00",
@@ -7482,12 +7482,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 157 3304128 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28895456 via the portal.",
        "weight": 1,
        "evidence": [
         "V002-P4"
        ],
-       "new_phone": "+49 157 3304128",
+       "new_phone": "+49 152 28895456",
        "vendor_id": "V002",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -7510,7 +7510,7 @@
     {
      "__hit__": {
       "id": "19644400-b2ac-49ca-9eff-fc1de8dce33d",
-      "text": "Risk signal portal.contact_change_new_device for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 157 3304128 from a device first seen in the last 72 hours. Evidence: V002-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28895456 from a device first seen in the last 72 hours. Evidence: V002-P4. Run 97e9e5fc-meko.",
       "score": 0.3717124789643549,
       "metadata": {
        "at": "2026-11-23T09:33:00",
@@ -7518,7 +7518,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 157 3304128 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28895456 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V002-P4"
@@ -7796,7 +7796,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6514670067310016,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -7804,12 +7804,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -7913,7 +7913,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6091304581253216,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -7921,7 +7921,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -7959,7 +7959,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.5964503560306682,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -7967,7 +7967,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -8052,7 +8052,7 @@
     {
      "__hit__": {
       "id": "00dc5491-7a4d-4ffd-b99b-a48e67d9ce74",
-      "text": "Risk signal contact.phone_changed for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 157 3304128 via the portal. Evidence: V002-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28895456 via the portal. Evidence: V002-P4. Run 97e9e5fc-meko.",
       "score": 0.3858962498471713,
       "metadata": {
        "at": "2026-11-23T09:33:00",
@@ -8060,12 +8060,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 157 3304128 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28895456 via the portal.",
        "weight": 1,
        "evidence": [
         "V002-P4"
        ],
-       "new_phone": "+49 157 3304128",
+       "new_phone": "+49 152 28895456",
        "vendor_id": "V002",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -8112,7 +8112,7 @@
     {
      "__hit__": {
       "id": "19644400-b2ac-49ca-9eff-fc1de8dce33d",
-      "text": "Risk signal portal.contact_change_new_device for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 157 3304128 from a device first seen in the last 72 hours. Evidence: V002-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28895456 from a device first seen in the last 72 hours. Evidence: V002-P4. Run 97e9e5fc-meko.",
       "score": 0.37009229572944274,
       "metadata": {
        "at": "2026-11-23T09:33:00",
@@ -8120,7 +8120,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 157 3304128 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28895456 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V002-P4"
@@ -8421,14 +8421,14 @@
   },
   {
    "method": "context_search",
-   "key": "Has the bank account LT141318609139099603 (Lithuania) or the device dev-c41e02 appeared in an earlier confirmed fraud case? Bank-change request for Bergmann Verpackung GmbH.",
+   "key": "Has the bank account LT770000009139099603 (Lithuania) or the device dev-c41e02 appeared in an earlier confirmed fraud case? Bank-change request for Bergmann Verpackung GmbH.",
    "result": {
     "memory": [],
     "knowledge_base": [
      {
       "__hit__": {
        "id": "55edca0c-24ca-509c-a091-eb319a84b509",
-       "text": "Section: Confirmed fraud case: Nordwind Logistik GmbH (V001), November 2026\n\nVendor-account takeover confirmed by the analyst on Tuesday 17 November 17:30, by calling the vendor on the phone number on file 60 days earlier: the vendor never asked to change its bank details. [run 97e9e5fc-meko]\n\nBank account in the request: LT735260181590830166 (Lithuania), account holder given as Nordwind Logistik GmbH, entered through the portalDevice of the portal session: dev-7f3a91, from NigeriaWhat the agents saw, in order: Mon 16 Nov 09:02 portal.failed_login_burst (5 failed portal logins within an hour); Mon 16 Nov 09:12 portal.reset_new_device (Portal password reset from new device dev-7f3a91 in NG); Mon 16 Nov 09:14 portal.new_device_foreign (Portal login from new device dev-7f3a91 in NG); Mon 16 Nov 09:31 portal.contact_change_new_device (Contact email changed to finance.nordwind@mail.test from a device first seen in the last 72 hours); Mon 16 Nov 09:33 contact.phone_changed (Phone number on file changed to +49 152 7781934 via the portal); Mon 16 Nov 09:33 portal.contact_change_new_device (Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours); Tue 17 Nov 16:05 email.urgency (The bank-change request pushes for speed); Tue 17 Nov 16:05 email.freemail_sender (Email claiming to be Nordwind Logistik GmbH from mail.test); Tue 17 Nov 16:05 email.bank_change_request (Email asks to pay to new bank details); Tue 17 Nov 16:07 bank.foreign_iban (New IBAN is in LT, vendor is in DE); Tue 17 Nov 16:40 bank.callback_to_recently_changed_phone (The callback went to +49 152 7781934, which was put on file 16 Nov)Signal types: [bank.callback_to_recently_changed_phone, bank.foreign_iban, contact.phone_changed, email.bank_change_request, email.freemail_sender, email.urgency, portal.contact_change_new_device, portal.failed_login_burst, portal.new_device_foreign, portal.reset_new_device]",
+       "text": "Section: Confirmed fraud case: Nordwind Logistik GmbH (V001), November 2026\n\nVendor-account takeover confirmed by the analyst on Tuesday 17 November 17:30, by calling the vendor on the phone number on file 60 days earlier: the vendor never asked to change its bank details. [run 97e9e5fc-meko]\n\nBank account in the request: LT320000081590830166 (Lithuania), account holder given as Nordwind Logistik GmbH, entered through the portalDevice of the portal session: dev-7f3a91, from NigeriaWhat the agents saw, in order: Mon 16 Nov 09:02 portal.failed_login_burst (5 failed portal logins within an hour); Mon 16 Nov 09:12 portal.reset_new_device (Portal password reset from new device dev-7f3a91 in NG); Mon 16 Nov 09:14 portal.new_device_foreign (Portal login from new device dev-7f3a91 in NG); Mon 16 Nov 09:31 portal.contact_change_new_device (Contact email changed to finance.nordwind@mail.test from a device first seen in the last 72 hours); Mon 16 Nov 09:33 contact.phone_changed (Phone number on file changed to +49 152 28817386 via the portal); Mon 16 Nov 09:33 portal.contact_change_new_device (Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours); Tue 17 Nov 16:05 email.urgency (The bank-change request pushes for speed); Tue 17 Nov 16:05 email.freemail_sender (Email claiming to be Nordwind Logistik GmbH from mail.test); Tue 17 Nov 16:05 email.bank_change_request (Email asks to pay to new bank details); Tue 17 Nov 16:07 bank.foreign_iban (New IBAN is in LT, vendor is in DE); Tue 17 Nov 16:40 bank.callback_to_recently_changed_phone (The callback went to +49 152 28817386, which was put on file 16 Nov)Signal types: [bank.callback_to_recently_changed_phone, bank.foreign_iban, contact.phone_changed, email.bank_change_request, email.freemail_sender, email.urgency, portal.contact_change_new_device, portal.failed_login_burst, portal.new_device_foreign, portal.reset_new_device]",
        "score": 0.9550922407935308,
        "metadata": {
         "agent_id": null
@@ -8446,7 +8446,7 @@
      "tool": "context_search",
      "datapack": "03df6a6f-de80-4c4e-93fc-5ae51f060675",
      "conversation_id": "576c434770ad484eb4811a452bf2e6ac",
-     "summary": "Has the bank account LT141318609139099603 (Lithuania) or the device dev-c41e02 appeared in an earlier confirmed fraud case? Bank-change request for Bergmann Verpackung GmbH.",
+     "summary": "Has the bank account LT770000009139099603 (Lithuania) or the device dev-c41e02 appeared in an earlier confirmed fraud case? Bank-change request for Bergmann Verpackung GmbH.",
      "latency_ms": 12381.9,
      "tokens_sent": 480,
      "found": 1
@@ -8489,7 +8489,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6532865338353687,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -8497,12 +8497,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -8629,7 +8629,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6120608892730204,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -8637,7 +8637,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -8675,7 +8675,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.5973059879088489,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -8683,7 +8683,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -8792,7 +8792,7 @@
     {
      "__hit__": {
       "id": "00dc5491-7a4d-4ffd-b99b-a48e67d9ce74",
-      "text": "Risk signal contact.phone_changed for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 157 3304128 via the portal. Evidence: V002-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28895456 via the portal. Evidence: V002-P4. Run 97e9e5fc-meko.",
       "score": 0.3869584580384665,
       "metadata": {
        "at": "2026-11-23T09:33:00",
@@ -8800,12 +8800,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 157 3304128 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28895456 via the portal.",
        "weight": 1,
        "evidence": [
         "V002-P4"
        ],
-       "new_phone": "+49 157 3304128",
+       "new_phone": "+49 152 28895456",
        "vendor_id": "V002",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -8851,7 +8851,7 @@
     {
      "__hit__": {
       "id": "19644400-b2ac-49ca-9eff-fc1de8dce33d",
-      "text": "Risk signal portal.contact_change_new_device for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 157 3304128 from a device first seen in the last 72 hours. Evidence: V002-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28895456 from a device first seen in the last 72 hours. Evidence: V002-P4. Run 97e9e5fc-meko.",
       "score": 0.3717124789643549,
       "metadata": {
        "at": "2026-11-23T09:33:00",
@@ -8859,7 +8859,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 157 3304128 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28895456 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V002-P4"
@@ -9170,7 +9170,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.65329883690293,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -9178,12 +9178,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -9310,7 +9310,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6120656405674804,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -9318,7 +9318,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -9356,7 +9356,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.5973164224301248,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -9364,7 +9364,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -9473,7 +9473,7 @@
     {
      "__hit__": {
       "id": "00dc5491-7a4d-4ffd-b99b-a48e67d9ce74",
-      "text": "Risk signal contact.phone_changed for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 157 3304128 via the portal. Evidence: V002-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28895456 via the portal. Evidence: V002-P4. Run 97e9e5fc-meko.",
       "score": 0.3869466359286492,
       "metadata": {
        "at": "2026-11-23T09:33:00",
@@ -9481,12 +9481,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 157 3304128 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28895456 via the portal.",
        "weight": 1,
        "evidence": [
         "V002-P4"
        ],
-       "new_phone": "+49 157 3304128",
+       "new_phone": "+49 152 28895456",
        "vendor_id": "V002",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -9532,7 +9532,7 @@
     {
      "__hit__": {
       "id": "19644400-b2ac-49ca-9eff-fc1de8dce33d",
-      "text": "Risk signal portal.contact_change_new_device for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 157 3304128 from a device first seen in the last 72 hours. Evidence: V002-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28895456 from a device first seen in the last 72 hours. Evidence: V002-P4. Run 97e9e5fc-meko.",
       "score": 0.371694630090618,
       "metadata": {
        "at": "2026-11-23T09:33:00",
@@ -9540,7 +9540,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 157 3304128 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28895456 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V002-P4"
@@ -9683,7 +9683,7 @@
     {
      "__hit__": {
       "id": "8f6ec499-5c12-4a75-badb-62152f709209",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V002 Bergmann Verpackung GmbH at 2026-11-24 15:20, weight 4, seen by the vendor_master agent. The callback went to +49 157 3304128, which was put on file 23 Nov. Evidence: V002-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V002 Bergmann Verpackung GmbH at 2026-11-24 15:20, weight 4, seen by the vendor_master agent. The callback went to +49 152 28895456, which was put on file 23 Nov. Evidence: V002-B2. Run 97e9e5fc-meko.",
       "score": 0.35737465550737774,
       "metadata": {
        "at": "2026-11-24T15:20:00",
@@ -9691,7 +9691,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 157 3304128, which was put on file 23 Nov.",
+       "detail": "The callback went to +49 152 28895456, which was put on file 23 Nov.",
        "weight": 4,
        "evidence": [
         "V002-B2"
@@ -9874,7 +9874,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6532865338353687,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -9882,12 +9882,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -10014,7 +10014,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6120608892730204,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -10022,7 +10022,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -10060,7 +10060,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.5973059879088489,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -10068,7 +10068,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -10194,7 +10194,7 @@
     {
      "__hit__": {
       "id": "00dc5491-7a4d-4ffd-b99b-a48e67d9ce74",
-      "text": "Risk signal contact.phone_changed for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 157 3304128 via the portal. Evidence: V002-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28895456 via the portal. Evidence: V002-P4. Run 97e9e5fc-meko.",
       "score": 0.3869584580384665,
       "metadata": {
        "at": "2026-11-23T09:33:00",
@@ -10202,12 +10202,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 157 3304128 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28895456 via the portal.",
        "weight": 1,
        "evidence": [
         "V002-P4"
        ],
-       "new_phone": "+49 157 3304128",
+       "new_phone": "+49 152 28895456",
        "vendor_id": "V002",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -10253,7 +10253,7 @@
     {
      "__hit__": {
       "id": "19644400-b2ac-49ca-9eff-fc1de8dce33d",
-      "text": "Risk signal portal.contact_change_new_device for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 157 3304128 from a device first seen in the last 72 hours. Evidence: V002-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28895456 from a device first seen in the last 72 hours. Evidence: V002-P4. Run 97e9e5fc-meko.",
       "score": 0.3717124789643549,
       "metadata": {
        "at": "2026-11-23T09:33:00",
@@ -10261,7 +10261,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 157 3304128 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28895456 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V002-P4"
@@ -10404,7 +10404,7 @@
     {
      "__hit__": {
       "id": "8f6ec499-5c12-4a75-badb-62152f709209",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V002 Bergmann Verpackung GmbH at 2026-11-24 15:20, weight 4, seen by the vendor_master agent. The callback went to +49 157 3304128, which was put on file 23 Nov. Evidence: V002-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V002 Bergmann Verpackung GmbH at 2026-11-24 15:20, weight 4, seen by the vendor_master agent. The callback went to +49 152 28895456, which was put on file 23 Nov. Evidence: V002-B2. Run 97e9e5fc-meko.",
       "score": 0.3573920930323081,
       "metadata": {
        "at": "2026-11-24T15:20:00",
@@ -10412,7 +10412,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 157 3304128, which was put on file 23 Nov.",
+       "detail": "The callback went to +49 152 28895456, which was put on file 23 Nov.",
        "weight": 4,
        "evidence": [
         "V002-B2"
@@ -10722,7 +10722,7 @@
     {
      "__hit__": {
       "id": "00dc5491-7a4d-4ffd-b99b-a48e67d9ce74",
-      "text": "Risk signal contact.phone_changed for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 157 3304128 via the portal. Evidence: V002-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28895456 via the portal. Evidence: V002-P4. Run 97e9e5fc-meko.",
       "score": 0.6679684813665171,
       "metadata": {
        "at": "2026-11-23T09:33:00",
@@ -10730,12 +10730,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 157 3304128 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28895456 via the portal.",
        "weight": 1,
        "evidence": [
         "V002-P4"
        ],
-       "new_phone": "+49 157 3304128",
+       "new_phone": "+49 152 28895456",
        "vendor_id": "V002",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -10815,7 +10815,7 @@
     {
      "__hit__": {
       "id": "19644400-b2ac-49ca-9eff-fc1de8dce33d",
-      "text": "Risk signal portal.contact_change_new_device for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 157 3304128 from a device first seen in the last 72 hours. Evidence: V002-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28895456 from a device first seen in the last 72 hours. Evidence: V002-P4. Run 97e9e5fc-meko.",
       "score": 0.6321698838045279,
       "metadata": {
        "at": "2026-11-23T09:33:00",
@@ -10823,7 +10823,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 157 3304128 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28895456 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V002-P4"
@@ -10861,7 +10861,7 @@
     {
      "__hit__": {
       "id": "8f6ec499-5c12-4a75-badb-62152f709209",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V002 Bergmann Verpackung GmbH at 2026-11-24 15:20, weight 4, seen by the vendor_master agent. The callback went to +49 157 3304128, which was put on file 23 Nov. Evidence: V002-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V002 Bergmann Verpackung GmbH at 2026-11-24 15:20, weight 4, seen by the vendor_master agent. The callback went to +49 152 28895456, which was put on file 23 Nov. Evidence: V002-B2. Run 97e9e5fc-meko.",
       "score": 0.6279100642532738,
       "metadata": {
        "at": "2026-11-24T15:20:00",
@@ -10869,7 +10869,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 157 3304128, which was put on file 23 Nov.",
+       "detail": "The callback went to +49 152 28895456, which was put on file 23 Nov.",
        "weight": 4,
        "evidence": [
         "V002-B2"
@@ -10947,7 +10947,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.3797794835342772,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -10955,12 +10955,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -11088,7 +11088,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.35538088037030213,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -11096,7 +11096,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -11157,7 +11157,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.3513937207836591,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -11165,7 +11165,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -11397,7 +11397,7 @@
     {
      "__hit__": {
       "id": "00dc5491-7a4d-4ffd-b99b-a48e67d9ce74",
-      "text": "Risk signal contact.phone_changed for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 157 3304128 via the portal. Evidence: V002-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28895456 via the portal. Evidence: V002-P4. Run 97e9e5fc-meko.",
       "score": 0.6502260922607432,
       "metadata": {
        "at": "2026-11-23T09:33:00",
@@ -11405,12 +11405,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 157 3304128 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28895456 via the portal.",
        "weight": 1,
        "evidence": [
         "V002-P4"
        ],
-       "new_phone": "+49 157 3304128",
+       "new_phone": "+49 152 28895456",
        "vendor_id": "V002",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -11492,7 +11492,7 @@
     {
      "__hit__": {
       "id": "19644400-b2ac-49ca-9eff-fc1de8dce33d",
-      "text": "Risk signal portal.contact_change_new_device for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 157 3304128 from a device first seen in the last 72 hours. Evidence: V002-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28895456 from a device first seen in the last 72 hours. Evidence: V002-P4. Run 97e9e5fc-meko.",
       "score": 0.6261900950109296,
       "metadata": {
        "at": "2026-11-23T09:33:00",
@@ -11500,7 +11500,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 157 3304128 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28895456 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V002-P4"
@@ -11515,7 +11515,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6247174135158828,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -11523,12 +11523,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -11608,7 +11608,7 @@
     {
      "__hit__": {
       "id": "8f6ec499-5c12-4a75-badb-62152f709209",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V002 Bergmann Verpackung GmbH at 2026-11-24 15:20, weight 4, seen by the vendor_master agent. The callback went to +49 157 3304128, which was put on file 23 Nov. Evidence: V002-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V002 Bergmann Verpackung GmbH at 2026-11-24 15:20, weight 4, seen by the vendor_master agent. The callback went to +49 152 28895456, which was put on file 23 Nov. Evidence: V002-B2. Run 97e9e5fc-meko.",
       "score": 0.6110539971634137,
       "metadata": {
        "at": "2026-11-24T15:20:00",
@@ -11616,7 +11616,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 157 3304128, which was put on file 23 Nov.",
+       "detail": "The callback went to +49 152 28895456, which was put on file 23 Nov.",
        "weight": 4,
        "evidence": [
         "V002-B2"
@@ -11655,7 +11655,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6017757993014324,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -11663,7 +11663,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"
@@ -11736,7 +11736,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.590835111374814,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -11744,7 +11744,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -12256,7 +12256,7 @@
     {
      "__hit__": {
       "id": "00dc5491-7a4d-4ffd-b99b-a48e67d9ce74",
-      "text": "Risk signal contact.phone_changed for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 157 3304128 via the portal. Evidence: V002-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28895456 via the portal. Evidence: V002-P4. Run 97e9e5fc-meko.",
       "score": 0.6052991376879923,
       "metadata": {
        "at": "2026-11-23T09:33:00",
@@ -12264,12 +12264,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 157 3304128 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28895456 via the portal.",
        "weight": 1,
        "evidence": [
         "V002-P4"
        ],
-       "new_phone": "+49 157 3304128",
+       "new_phone": "+49 152 28895456",
        "vendor_id": "V002",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -12327,7 +12327,7 @@
     {
      "__hit__": {
       "id": "465a382d-38f2-4cb1-9a0b-6c956f21fc35",
-      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 7781934 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal contact.phone_changed for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 1, seen by the portal agent. Phone number on file changed to +49 152 28817386 via the portal. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.6033696676004932,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -12335,12 +12335,12 @@
        "kind": "signal",
        "type": "contact.phone_changed",
        "agent": "portal",
-       "detail": "Phone number on file changed to +49 152 7781934 via the portal.",
+       "detail": "Phone number on file changed to +49 152 28817386 via the portal.",
        "weight": 1,
        "evidence": [
         "V001-P4"
        ],
-       "new_phone": "+49 152 7781934",
+       "new_phone": "+49 152 28817386",
        "vendor_id": "V001",
        "meko_datapack_id": "95a2f7df-fd1c-4bf9-bd77-746c86e203c8",
        "agent_id": "portal"
@@ -12386,7 +12386,7 @@
     {
      "__hit__": {
       "id": "30ef2526-c959-4fb4-b428-f1154a06a7d1",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 7781934, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V001 Nordwind Logistik GmbH at 2026-11-17 16:40, weight 4, seen by the vendor_master agent. The callback went to +49 152 28817386, which was put on file 16 Nov. Evidence: V001-B2. Run 97e9e5fc-meko.",
       "score": 0.5937016233916171,
       "metadata": {
        "at": "2026-11-17T16:40:00",
@@ -12394,7 +12394,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 152 7781934, which was put on file 16 Nov.",
+       "detail": "The callback went to +49 152 28817386, which was put on file 16 Nov.",
        "weight": 4,
        "evidence": [
         "V001-B2"
@@ -12409,7 +12409,7 @@
     {
      "__hit__": {
       "id": "19644400-b2ac-49ca-9eff-fc1de8dce33d",
-      "text": "Risk signal portal.contact_change_new_device for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 157 3304128 from a device first seen in the last 72 hours. Evidence: V002-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V002 Bergmann Verpackung GmbH at 2026-11-23 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28895456 from a device first seen in the last 72 hours. Evidence: V002-P4. Run 97e9e5fc-meko.",
       "score": 0.5926445478869321,
       "metadata": {
        "at": "2026-11-23T09:33:00",
@@ -12417,7 +12417,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 157 3304128 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28895456 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V002-P4"
@@ -12432,7 +12432,7 @@
     {
      "__hit__": {
       "id": "8f6ec499-5c12-4a75-badb-62152f709209",
-      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V002 Bergmann Verpackung GmbH at 2026-11-24 15:20, weight 4, seen by the vendor_master agent. The callback went to +49 157 3304128, which was put on file 23 Nov. Evidence: V002-B2. Run 97e9e5fc-meko.",
+      "text": "Risk signal bank.callback_to_recently_changed_phone for vendor V002 Bergmann Verpackung GmbH at 2026-11-24 15:20, weight 4, seen by the vendor_master agent. The callback went to +49 152 28895456, which was put on file 23 Nov. Evidence: V002-B2. Run 97e9e5fc-meko.",
       "score": 0.591741801691321,
       "metadata": {
        "at": "2026-11-24T15:20:00",
@@ -12440,7 +12440,7 @@
        "kind": "signal",
        "type": "bank.callback_to_recently_changed_phone",
        "agent": "vendor_master",
-       "detail": "The callback went to +49 157 3304128, which was put on file 23 Nov.",
+       "detail": "The callback went to +49 152 28895456, which was put on file 23 Nov.",
        "weight": 4,
        "evidence": [
         "V002-B2"
@@ -12478,7 +12478,7 @@
     {
      "__hit__": {
       "id": "fc9ba2a4-1362-4e66-91ed-a37e806de322",
-      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
+      "text": "Risk signal portal.contact_change_new_device for vendor V001 Nordwind Logistik GmbH at 2026-11-16 09:33, weight 3, seen by the portal agent. Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours. Evidence: V001-P4. Run 97e9e5fc-meko.",
       "score": 0.5878120005710072,
       "metadata": {
        "at": "2026-11-16T09:33:00",
@@ -12486,7 +12486,7 @@
        "kind": "signal",
        "type": "portal.contact_change_new_device",
        "agent": "portal",
-       "detail": "Contact phone changed to +49 152 7781934 from a device first seen in the last 72 hours.",
+       "detail": "Contact phone changed to +49 152 28817386 from a device first seen in the last 72 hours.",
        "weight": 3,
        "evidence": [
         "V001-P4"

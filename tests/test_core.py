@@ -212,9 +212,9 @@ def test_a_recorded_run_replays_exactly_and_stops_when_it_goes_off_script(tmp_pa
 def test_the_ledger_answers_as_of_queries_and_links_records_to_meko_traces(story):
     ledger = SqliteLedger("t")
     ledger.setup({"V001": VENDORS["V001"]}, since=datetime(2026, 7, 1))
-    ledger.contact_changed("V001", "phone", "+49 152 7781934", datetime(2026, 11, 16, 9, 33), "portal")
+    ledger.contact_changed("V001", "phone", "+49 152 28817386", datetime(2026, 11, 16, 9, 33), "portal")
     assert ledger.value_as_of("V001", "phone", datetime(2026, 11, 16)) == VENDORS["V001"].phone
-    assert ledger.value_as_of("V001", "phone", datetime(2026, 11, 17)) == "+49 152 7781934"
+    assert ledger.value_as_of("V001", "phone", datetime(2026, 11, 17)) == "+49 152 28817386"
 
     meko = story.lanes["learning2"]
     traces = {d["trace_id"] for d in meko.log}
@@ -223,7 +223,7 @@ def test_the_ledger_answers_as_of_queries_and_links_records_to_meko_traces(story
     assert [(c["vendor_id"], c["outcome"]) for c in changes] == [("V001", "blocked"), ("V002", "blocked")]
     assert all(c["trace_id"] in traces for c in changes)
     master = {v["vendor_id"]: v for v in story.ledger.table("vendors")}
-    assert master["V001"]["phone"] == "+49 152 7781934"             # the attacker's number is the current one...
+    assert master["V001"]["phone"] == "+49 152 28817386"             # the attacker's number is the current one...
     analyst = [st.title for c, out in story.done if not c.act for st in out["learning2"].steps
                if st.agent == "analyst"]
     assert any(VENDORS["V001"].phone in t and "ledger" in t for t in analyst)   # ...the analyst calls the old one
@@ -265,14 +265,14 @@ def test_week_three_the_consortium_freezes_before_the_crew_asks():
     assert any("pattern from the Nordwind Logistik GmbH case at Hallberg Components GmbH" in ln for ln in monday)
     known = [w for w in joined.mem.written if w.type == "consortium.known_infrastructure"]
     assert [(w.at, w.agent) for w in known] == [(datetime(2026, 12, 1, 10, 5), "inbox")]   # the mule account
-    assert "LT73 5260" in known[0].detail and "Hallberg Components GmbH" in known[0].detail
+    assert "LT32 0000" in known[0].detail and "Hallberg Components GmbH" in known[0].detail
     assert not [w for w in alone.mem.written if w.type.startswith("consortium.")]
     assert joined.asked["V101"]["related"] == "Nordwind Logistik GmbH"   # the case file shared by Hallberg
     shared = {r["value"]: r["by"] for r in net["rows"]}
     assert len(shared[CREW["V001"]["iban"]]) == 2 and "dev-2b9d57" in shared   # Weller's case went back in
 
     gone = s.revoke("Hallberg Components GmbH", "Nordwind Logistik GmbH", "test")   # taken back, nothing deleted
-    assert gone == ["+49 152 7781934", "dev-7f3a91"]                 # the account stays: Weller confirmed it too
+    assert gone == ["+49 152 28817386", "dev-7f3a91"]                 # the account stays: Weller confirmed it too
     assert CREW["V001"]["iban"] in joined.consortium and not joined.mem.patterns("inbox")
     rows = {r["value"]: r for r in s.network()["rows"]}
     assert not rows["dev-7f3a91"]["active"] and rows[CREW["V001"]["iban"]]["active"]

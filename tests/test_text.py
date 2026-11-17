@@ -42,3 +42,30 @@ def test_invented_addresses_cannot_belong_to_anyone():
             if not (host.endswith((".example", ".test")) or host in ("example.com", "example.org", "example.net")):
                 found.setdefault(str(p.relative_to(ROOT)), set()).add(m.group(0))
     assert not found, found
+
+
+# The Bundesnetzagentur's «Rufnummern für Medienproduktionen» (Drama Numbers): never given to anyone.
+DRAMA_LANDLINE = ("+493023125", "+496990009", "+494066969", "+492214710", "+498999998")    # each + 3 digits
+DRAMA_MOBILE = {"+4915228817386", "+4915228895456", "+4915254599371", "+491729925904", "+491729968532",
+                "+491729973185", "+491729973186", "+491729980752", "+491749091317", "+491749464308"}
+DRAMA_MOBILE_BLOCKS = ("+4917139200", "+49176040690")                                      # each + 2 digits
+
+
+def _drama_number(phone: str) -> bool:
+    p = phone.replace(" ", "")
+    return (p in DRAMA_MOBILE
+            or any(p.startswith(b) and len(p) == len(b) + 3 and p[len(b):].isdigit() for b in DRAMA_LANDLINE)
+            or any(p.startswith(b) and len(p) == len(b) + 2 and p[len(b):].isdigit() for b in DRAMA_MOBILE_BLOCKS))
+
+
+def test_the_story_phones_and_ibans_cannot_reach_anyone():
+    """Every phone in the story is a Drama Number; every IBAN has valid check digits around a bank code no bank has."""
+    from payee_sentinel.scenario import NO_BANK, iban_is_valid
+    from payee_sentinel.story import CREW, VENDORS, VENDORS2
+    vendors = [*VENDORS.values(), *VENDORS2.values()]
+    phones = [v.phone for v in vendors] + [c["phone"] for c in CREW.values()]
+    assert [p for p in phones if not _drama_number(p)] == []
+    for iban in [v.iban for v in vendors] + [c["iban"] for c in CREW.values()]:
+        a, b, fill = NO_BANK[iban[:2]]
+        assert iban_is_valid(iban) and iban[4 + a:4 + b] == fill * (b - a), iban
+
