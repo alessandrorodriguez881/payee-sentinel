@@ -4,8 +4,8 @@ Accounts-payable agents that share what they see through [Meko](https://mekodata
 takeover is stopped before the money leaves. Built for ContextCon: Remember Everything (theme 03, "Remember the
 Attacker").
 
-**Try it:** `pip install -r requirements.txt`, then `streamlit run app.py`. No key is needed: the demo opens on a
-replay of a run recorded on real Meko.
+**Live demo:** <https://payee-sentinel.streamlit.app>, no sign-in and no key. **Or run it locally:**
+`pip install -r requirements.txt`, then `streamlit run app.py`. Both open on a replay of a run recorded on real Meko.
 
 ## The attack
 A supplier's account is taken over in pieces, and each piece reaches a different system:
