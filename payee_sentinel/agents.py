@@ -66,7 +66,8 @@ HOLD_AT = 7                    # payments: hold for a person at this risk or mor
 STEP_UP_AT = 4                 # payments: call the phone on file 60+ days ago, if the bank details changed recently
 PATTERN_MIN_SHARED = 3         # a pattern matches when 3+ of its signal types appear and cover 60 % of it
 PATTERN_MIN_COVER = 0.6
-FREEMAIL = ("gmail.com", "outlook.com", "yahoo.com", "gmx.net", "proton.me")
+# The invented data writes from mail.test and mailer.test: names reserved by RFC 2606, so no real mailbox has them.
+FREEMAIL = ("gmail.com", "outlook.com", "yahoo.com", "gmx.net", "proton.me", "mail.test", "mailer.test")
 BANK_WORDS = re.compile(r"bank details|IBAN|account details|new account", re.I)
 URGENT_WORDS = re.compile(r"urgent|as soon as possible|today if possible|before friday|being closed", re.I)
 RECON_WORDS = re.compile(r"list of (all )?open invoices|next payment date", re.I)

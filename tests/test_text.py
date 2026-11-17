@@ -1,5 +1,6 @@
 """The repo's text files are UTF-8 with LF line ends, so «€» and «£» reach GitHub and the app as themselves and not as
 the mojibake a wrong encoding leaves (UTF-8 bytes read as Windows-1252)."""
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,3 +31,14 @@ def test_the_currency_signs_survive():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "€85,250" in readme and "£450.7 million" in readme and "$2.77 billion" in readme
     assert "€85,250" in (ROOT / "app.py").read_text(encoding="utf-8")
+
+
+def test_invented_addresses_cannot_belong_to_anyone():
+    """The repo is public: every e-mail address in it uses a name reserved by RFC 2606, never a real provider."""
+    found = {}
+    for p in _text_files():
+        for m in re.finditer(r"[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)", p.read_text(encoding="utf-8")):
+            host = m.group(1).lower()
+            if not (host.endswith((".example", ".test")) or host in ("example.com", "example.org", "example.net")):
+                found.setdefault(str(p.relative_to(ROOT)), set()).add(m.group(0))
+    assert not found, found

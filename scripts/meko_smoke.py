@@ -31,7 +31,7 @@ def main() -> None:
     show("conversation id", cid)
     steps = [
         ("add_message with reasoning and plan", lambda: m.add_message(
-            dp, cid, "inbox", "Email from accounts@nordwind-logistik.de asks to change the IBAN.",
+            dp, cid, "inbox", "Email from accounts@nordwind-logistik.example asks to change the IBAN.",
             "Flagged: bank-change request, urgency.", reasoning="Bank words and urgency in the same email.",
             plan=["search memory for the vendor", "write signals"])),
         ("memory_add with metadata", lambda: m.memory_add(

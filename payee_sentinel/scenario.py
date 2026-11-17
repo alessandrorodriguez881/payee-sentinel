@@ -293,7 +293,7 @@ def _attack(b: _Builder, v: Vendor, kind: str, case: Case, day0: datetime, next_
         b.add(t, "portal", "login", v, case, device=new_dev, country=login_country, success=True)
         t += timedelta(minutes=rng.randint(10, 300))
         b.add(t, "portal", "contact_change", v, case, device=new_dev, country=login_country, field="email",
-              old=v.email, new=f"finance.{v.domain.split('.')[0]}@{rng.choice(['gmail.com', 'outlook.com'])}")
+              old=v.email, new=f"finance.{v.domain.split('.')[0]}@{rng.choice(['mail.test', 'mailer.test'])}")
         if rng.random() < 0.6:
             t += timedelta(minutes=rng.randint(1, 15))
             b.add(t, "portal", "contact_change", v, case, device=new_dev, country=login_country, field="phone",
@@ -313,7 +313,7 @@ def _attack(b: _Builder, v: Vendor, kind: str, case: Case, day0: datetime, next_
         t = max(START, request_at - timedelta(days=rng.randint(2, 6)))
         b.add(t, "support", "call", v, case, caller=attacker_phone, request="update_phone", new=attacker_phone,
               verified_by="invoice_no")
-        sender = v.email if rng.random() < 0.5 else f"{v.domain.split('.')[0]}.finance@gmail.com"
+        sender = v.email if rng.random() < 0.5 else f"{v.domain.split('.')[0]}.finance@mail.test"
         b.add(request_at, "inbox", "email", v, case, **_bank_change_email(
             rng, v, sender, None, case.new_iban, holder, rng.random() < 0.5, None))
         b.add(request_at + timedelta(minutes=2), "vendor_master", "bank_change_request", v, case, via="email",

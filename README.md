@@ -137,7 +137,9 @@ python -m payee_sentinel.evaluate --seeds 1-5         # the measurement
 ```
 
 ## Honest notes
-- All data is invented. IBANs have valid check digits around random account numbers.
+- All data is invented. E-mail addresses and company domains use names reserved for examples (RFC 2606: `.example`,
+  `.test`), which no real mailbox or company can have; the recorded Meko run had its invented addresses moved to them
+  on 17 Nov 2026, and nothing else in it changed. IBANs have valid check digits around random account numbers.
 - One assumption shapes the siloed results: the vendor master keeps only the *current* contact values. Who changed a
   phone number, and from where, is known only to the portal and the support line. That is why a vendor-master agent on
   its own trusts a callback to a number the attacker put on file the day before.
