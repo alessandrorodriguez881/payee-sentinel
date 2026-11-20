@@ -16,8 +16,8 @@ def test_click_through_the_story_with_a_promotion(monkeypatch):
     monkeypatch.setattr("payee_sentinel.context.replay.latest_recording", lambda *a, **k: None)   # the simulator
     at = AppTest.from_file(APP, default_timeout=60).run()
     assert not at.exception
-    ends = {"Agents in silos (today)": "€85,250", "Agents sharing memory in Meko": "€0",
-            "Week 3, another company (simulated)": "21 h early"}   # the first screen tells where the story ends: checked below
+    ends = {"Agents in silos (today)": "€85,250", "Sharing memory in Meko": "€0",
+            "Week 3 (simulated)": "21 h early"}   # the first screen tells where the story ends: checked below
     assert {m.label: m.value for m in at.metric if m.label in ends} == ends
     for step in range(4):                                # Monday, Tuesday, payment run, audit
         _button(at, "Next:").click()

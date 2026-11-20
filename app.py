@@ -149,10 +149,10 @@ with story_tab:
         ends = st.columns(3)
         for col, (label, value, note) in zip(ends, (
                 ("Agents in silos (today)", "€85,250", "sent to the attackers in two weeks"),
-                ("Agents sharing memory in Meko", "€0", "the bank change is blocked at Tuesday's callback"),
-                ("Week 3, another company (simulated)", "21 h early",
-                 "the vendor is frozen 21 hours before the attacker asks for new bank details, by what the first "
-                 "company confirmed"))):
+                ("Sharing memory in Meko", "€0", "the same agents: the bank change is blocked at Tuesday's callback"),
+                ("Week 3 (simulated)", "21 h early",
+                 "another company of the consortium: the vendor is frozen 21 hours before the attacker asks for new "
+                 "bank details, by what the first company confirmed"))):   # short labels: st.metric cuts long ones
             col.metric(label, value, border=True)
             col.caption(note)
         st.markdown("**How:** every agent writes what looks risky to shared memory in Meko and searches it before it "
