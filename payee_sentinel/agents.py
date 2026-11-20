@@ -133,12 +133,13 @@ class Action:
 class Memory:
     """What the agents share through Meko, seen through the mode of the run."""
 
-    def __init__(self, store: ContextStore, mode: str, vendors: dict[str, Vendor], run_id: str | None = None):
-        assert mode in MODES
+    def __init__(self, store: ContextStore, mode: str, vendors: dict[str, Vendor], run_id: str | None = None,
+                 patterns: str = "sentinel-patterns"):
+        assert mode in MODES                  # `patterns`: another company's patterns and case files stay apart
         self.store, self.mode, self.vendors = store, mode, vendors
         self.run_id = run_id    # on real Meko, keeps one demo run from reading the signals of earlier runs
         self.signals_dp = store.ensure_datapack("sentinel-signals", "Raw risk signals from every channel agent")
-        self.patterns_dp = store.ensure_datapack("sentinel-patterns", "Confirmed attack patterns and playbooks")
+        self.patterns_dp = store.ensure_datapack(patterns, "Confirmed attack patterns and playbooks")
         self.legit_dp = store.ensure_datapack("sentinel-legit", "Legitimate look-alikes confirmed by the analyst")
         self.audit_dp = store.ensure_datapack("sentinel-audit", "Audit reports and case files")
         self._conv: dict[str, str] = {}

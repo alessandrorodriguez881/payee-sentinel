@@ -187,7 +187,7 @@ def test_a_recorded_run_replays_exactly_and_stops_when_it_goes_off_script(tmp_pa
         first.advance()
         if ch.key == "audit":
             first.promote("V001")
-    path = rec.save(tmp_path / "run.json", first.run_id)
+    path = rec.save(tmp_path / "run.json", first.run_id, consortium_on_meko=first.week3_on_meko)
     raw = path.read_text(encoding="utf-8")
     assert "user_email" not in raw and "user_name" not in raw          # only parsed results are kept
 
@@ -378,3 +378,35 @@ def test_meko_client_refuses_a_missing_key(monkeypatch):
     monkeypatch.delenv("MEKO_API_KEY", raising=False)
     with pytest.raises(MekoError):
         MekoClient("")
+
+
+def test_week_three_runs_on_the_same_meko_when_recorded_and_replays_exactly(tmp_path):
+    """B1: while recording (here on the simulator), Weller's consortium team uses the same store as Hallberg's, with
+    its own patterns datapack and the shared one; the replay goes through week 3 call by call and ends the same way."""
+    from payee_sentinel.context.replay import Recorder, Replayer
+
+    def run(story):
+        for ch in CHAPTERS:
+            story.advance()
+            if ch.key == "audit":
+                story.promote("V001")
+        return story
+
+    recorder = Recorder(LocalMeko(), "simulator")
+    story = run(Story(lambda: recorder))
+    assert story.week3_on_meko and story.act["consortium"].store is recorder
+    assert not isinstance(story.act["alone"].store, Recorder)                 # the comparison stays apart
+    made = {e["key"] for e in recorder.entries if e["method"] == "ensure_datapack"}
+    assert {"consortium", "weller-patterns", "sentinel-signals"} <= made
+    net = story.network()
+    assert net["consortium"] == datetime(2026, 11, 30, 13, 20) < net["asked"] == datetime(2026, 12, 1, 10, 5)
+    path = recorder.save(tmp_path / "run.json", story.run_id, consortium_on_meko=story.week3_on_meko)
+    replay = Replayer(path)
+    again = run(Story(lambda: replay, run_id=replay.run_id))
+    assert again.week3_on_meko and replay.pos == len(replay.entries)
+    assert again.network() == net and again.summary() == story.summary()
+    at = replay.pos
+    gone = again.revoke("Hallberg Components GmbH", "Nordwind Logistik GmbH", "a test")
+    assert gone and replay.pos == at                     # applied to what Meko returned: no unrecorded calls
+    assert any("taken back" in by for row in again.network()["rows"] for by in row["by"])
+

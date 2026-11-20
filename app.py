@@ -151,7 +151,7 @@ with story_tab:
         for col, (label, value, note) in zip(ends, (
                 ("Agents in silos (today)", "€85,250", "sent to the attackers in two weeks"),
                 ("Sharing memory in Meko", "€0", "the same agents: the bank change is blocked at Tuesday's callback"),
-                ("Week 3 (simulated)", "21 h early",
+                ("Week 3 (real Meko)" if story.week3_on_meko else "Week 3 (simulated)", "21 h early",
                  "another company of the consortium: the vendor is frozen 21 hours before the attacker asks for new "
                  "bank details, by what the first company confirmed"))):   # short labels: st.metric cuts long ones
             col.metric(label, value, border=True)
@@ -162,7 +162,9 @@ with story_tab:
         st.button("Start on Monday morning", type="primary", icon=":material/play_arrow:", on_click=start)
         recorded = "" if not replaying else (
             f"You are watching a replay of a run recorded on real Meko on {meko_lane.store.recorded_at[:10]}: the same "
-            f"calls, the answers Meko gave. Week 3 runs on the offline simulator. ")
+            f"calls, the answers Meko gave. " + ("Week 3 too: the second company's team in Meko, next to the first "
+                                                  "one's, and the datapack they share. " if story.week3_on_meko else
+                                                  "Week 3 runs on the offline simulator. "))
         st.caption(f"{recorded}{len(CHAPTERS)} steps; Next in the sidebar moves on. All data is invented. In this "
                    f"story neither team checks the payee's name with the bank (Verification of Payee); with it in "
                    f"every team, see «Measured results», round 4.")
@@ -183,8 +185,12 @@ with story_tab:
         st.caption(f"{ch.when:%A %d %B %Y, %H:%M}")
         st.write(ch.story)
         if ch.act:
-            st.caption(":material/hub: Week 3 runs on the offline simulator of Meko in every mode: both companies "
-                       "and their consortium are simulated in one place. Only what Hallberg's analyst confirmed and a "
+            st.caption(":material/hub: Weller's consortium team runs in the same Meko as Hallberg's: its own "
+                       "memories (by run), its own patterns and case files, and the `consortium` datapack they share. "
+                       "Weller on its own, the comparison, runs on the offline simulator. Only what Hallberg's analyst "
+                       "confirmed and a person approved is shared." if story.week3_on_meko else
+                       ":material/hub: Week 3 runs on the offline simulator of Meko in this mode: both companies and "
+                       "their consortium are simulated in one place. Only what Hallberg's analyst confirmed and a "
                        "person approved is shared.")
         if ch.kind in ("events", "payments"):
             for col, (mode, o) in zip(st.columns(2, gap="large"), outcomes.items()):
@@ -282,9 +288,12 @@ with story_tab:
                                                          f"{len(gone)} values left the shared list.")
                         st.rerun()
             if st.session_state.get("revoked_note"):
-                st.info(st.session_state.revoked_note + " Nothing was deleted: the revocation is a record of its own "
-                        "in the consortium's datapack, and the pattern from that case stops counting in every member's "
-                        "checks (Meko keeps a promoted memory; the agents skip it).", icon=":material/undo:")
+                where = ("In this replay it applies to what Meko returned; live, it is a record of its own in the "
+                         "consortium's datapack" if replaying and story.week3_on_meko else
+                         "The revocation is a record of its own in the consortium's datapack")
+                st.info(st.session_state.revoked_note + f" Nothing was deleted. {where}, and the pattern from that "
+                        "case stops counting in every member's checks (Meko keeps a promoted memory; the agents skip "
+                        "it).", icon=":material/undo:")
         else:
             summary = story.summary()
             cols = st.columns(2, gap="large")

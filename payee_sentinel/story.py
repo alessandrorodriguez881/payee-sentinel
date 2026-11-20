@@ -249,10 +249,10 @@ class Lane:
     """One team of agents with its own memory store and its own view of the money."""
 
     def __init__(self, mode: str, store, run_id: str | None = None, ledger: Ledger | None = None,
-                 vendors: dict[str, Vendor] | None = None):
+                 vendors: dict[str, Vendor] | None = None, patterns: str = "sentinel-patterns"):
         self.mode, self.store, self.ledger = mode, store, ledger    # the ledger: the Meko lane's system of record
         self.vendors = vendors or VENDORS
-        self.mem = SharedMemory(store, mode, self.vendors, run_id)
+        self.mem = SharedMemory(store, mode, self.vendors, run_id, patterns=patterns)
         self.agents = {"portal": PortalAgent(self.mem), "support": SupportAgent(self.mem),
                        "inbox": InboxAgent(self.mem)}
         self.vm, self.pay = VendorMasterAgent(self.mem), PaymentAgent(self.mem)
@@ -619,12 +619,15 @@ class Story:
         Meko, or SQLite). The siloed lane always runs on the simulator, with no ledger: it stands for separate tools
         with no shared memory."""
         self.run_id = run_id or uuid.uuid4().hex[:8]
+        self.make_store = make_store                     # week 3's consortium team uses it too, on real Meko
         self.ledger = make_ledger(f"{self.run_id}-meko")
         self.ledger.setup(VENDORS, since=MON1 - timedelta(days=120))
         self.lanes = {"siloed": Lane("siloed", LocalMeko(), f"{self.run_id}-siloed"),
                       "learning2": Lane("learning2", make_store(), f"{self.run_id}-meko", self.ledger)}
         self.done: list[tuple[Chapter, dict[str, Outcome]]] = []
         self.act: dict[str, Lane] = {}                 # week 3: Weller on its own and in the consortium
+        self._net: tuple[list[dict], set] | None = None   # the consortium as read at the network chapter
+        self._replay_revoked: set[tuple[str, str]] = set()  # revocations made while replaying (not recorded)
         meko = self.lanes["learning2"]
         self.reader = meko.reader = reader              # Claude, when there is a key (`reader.Reader.from_env`)
         if reader is not None and (getattr(reader, "replays", False) or not isinstance(meko.store, Replayer)):
@@ -653,6 +656,7 @@ class Story:
             elif ch.kind == "network":
                 if mode == "consortium":                   # Weller's confirmed case goes in for the next member
                     self._share_list(lane, BUYER2, lane)
+                    self._net = self._consortium_hits(lane)   # read once, here: a replay holds this read
                 out[mode] = Outcome(ch.key, [], "")
             else:
                 notes = self.explain(mode, "V001", ch.when) if ch.kind == "audit" else []
@@ -680,11 +684,25 @@ class Story:
             lines.append(f"{lane.reader.label}: {res.note}")
         return lines
 
+    @property
+    def week3_on_meko(self) -> bool:
+        """Whether Weller's consortium team runs on the same Meko as Hallberg's team: live, while recording, and in a
+        replay of a recording that holds week 3. A replay of an older recording (weeks 1-2 only) and the offline
+        simulator keep it on a simulator of its own, as before."""
+        store = self.lanes["learning2"].store
+        if isinstance(store, Replayer):
+            return bool(getattr(store, "consortium_on_meko", False))
+        return not isinstance(store, LocalMeko)
+
     def _start_act(self) -> None:
-        """Week 3: Weller's two teams, both with Meko inside the company. They run on the offline simulator whatever
-        engine Hallberg's lane uses, so a recorded run of weeks 1-2 stays valid. The consortium team first receives
-        what Hallberg shares, then reads the shared list back from its `consortium` datapack."""
-        joined = Lane("learning2", LocalMeko(), f"{self.run_id}-weller-consortium", vendors=VENDORS2)
+        """Week 3: Weller's two teams, both with Meko inside the company. The consortium team runs on the same Meko
+        as Hallberg's team when `week3_on_meko`: in Hallberg's datapacks, where each run reads only its own memories
+        (by run id), plus `weller-patterns` for its patterns and case files and the `consortium` datapack they share.
+        Weller on its own, the comparison, stays on the offline simulator. The consortium team first receives what
+        Hallberg shares, then reads the shared list back from the `consortium` datapack."""
+        on_meko = self.week3_on_meko
+        joined = Lane("learning2", self.make_store() if on_meko else LocalMeko(), f"{self.run_id}-weller-consortium",
+                      vendors=VENDORS2, patterns="weller-patterns" if on_meko else "sentinel-patterns")
         self.share(self.lanes["learning2"], BUYER, joined)
         joined.consortium = self._consortium_list(joined)
         self.act = {"alone": Lane("learning2", LocalMeko(), f"{self.run_id}-weller", vendors=VENDORS2),
@@ -752,7 +770,8 @@ class Story:
     def _consortium_list(self, lane: Lane) -> dict[str, dict]:
         """The shared list as Weller's agents read it from Meko: value -> where it came from (first confirmation that
         its member has not taken back)."""
-        entries, revoked = self._consortium_hits(lane)
+        entries, revoked = self._consortium_hits(lane) if self._net is None else self._net
+        revoked = revoked | self._replay_revoked
         out: dict[str, dict] = {}
         for m in sorted(entries, key=lambda m: m["confirmed"]):
             if (m["company"], m["case"]) not in revoked:
@@ -764,12 +783,16 @@ class Story:
         the consortium datapack (the audit trail stays), the shared list is read again without the case, and the
         pattern from that case stops counting in the members' checks. Returns the values that left the list."""
         lane = self.act["consortium"]
-        store, conv = lane.store, lane.mem.conversation("auditor")
-        dp = store.ensure_datapack("consortium", "Attacker infrastructure the member companies confirmed")
         at = next(ch.when for ch in CHAPTERS if ch.key == "network")
-        store.memory_add(dp, conv, "auditor", f"Revocation by {company}: everything shared about the {case} case is "
-                         f"taken back on {at:%d %b %Y}. Reason: {reason}",
-                         dict(kind="revocation", company=company, case=case, at=at.isoformat(), reason=reason))
+        if isinstance(lane.store, Replayer):      # a replay holds no more calls: apply it to what Meko returned
+            self._replay_revoked.add((company, case))
+        else:
+            store, conv = lane.store, lane.mem.conversation("auditor")
+            dp = store.ensure_datapack("consortium", "Attacker infrastructure the member companies confirmed")
+            store.memory_add(dp, conv, "auditor", f"Revocation by {company}: everything shared about the {case} case "
+                             f"is taken back on {at:%d %b %Y}. Reason: {reason}",
+                             dict(kind="revocation", company=company, case=case, at=at.isoformat(), reason=reason))
+            self._net = self._consortium_hits(lane)
         before = set(lane.consortium)
         lane.consortium = self._consortium_list(lane)
         lane.mem.revoked |= {mid for mid, src in lane.shared_patterns.items()
@@ -779,7 +802,8 @@ class Story:
     def network(self) -> dict:
         """The consortium after week 3, read back from its datapack, and when each of Weller's teams acted."""
         lane, rows = self.act["consortium"], {}
-        entries, revoked = self._consortium_hits(lane)
+        entries, revoked = self._consortium_hits(lane) if self._net is None else self._net
+        revoked = revoked | self._replay_revoked
         for m in sorted(entries, key=lambda m: (m["confirmed"], m["what"])):
             row = rows.setdefault(m["value"], dict(what=m["what"], value=m["value"], by=[], active=False))
             gone = (m["company"], m["case"]) in revoked

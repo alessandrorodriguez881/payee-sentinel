@@ -309,7 +309,8 @@ def test_a_run_recorded_with_the_model_replays_its_answers_with_no_key(tmp_path)
     answers = AnswerRecorder(reader)
     recorder = Recorder(LocalMeko(), "simulator")
     recorded = _with_claude(Story(lambda: recorder, reader=reader))
-    path = recorder.save(tmp_path / "run.json", recorded.run_id, llm=answers.dump())
+    path = recorder.save(tmp_path / "run.json", recorded.run_id, llm=answers.dump(),
+                         consortium_on_meko=recorded.week3_on_meko)
     replay = Replayer(path)
     again = _with_claude(Story(lambda: replay, run_id=replay.run_id, reader=ReplayReader.from_recording(path)))
     assert replay.pos == len(replay.entries)                  # every Meko call, the token reports included

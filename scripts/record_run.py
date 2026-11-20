@@ -40,7 +40,7 @@ def record(real: bool, out: Path | None = None, reader: Reader | None = None) ->
         if ch.key == "audit":
             story.promote("V001")
     name = f"{'real-meko' if real else 'simulator'}-{date.today():%Y-%m-%d}-{story.run_id}.json"
-    extra = dict(llm=answers.dump()) if answers is not None else {}
+    extra = dict(consortium_on_meko=story.week3_on_meko) | (dict(llm=answers.dump()) if answers is not None else {})
     return story, recorder.save(out or RECORDINGS / name, story.run_id, **extra)
 
 

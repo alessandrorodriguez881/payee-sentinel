@@ -111,6 +111,7 @@ class Replayer:
     def __init__(self, path: Path):
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         self.engine, self.run_id, self.recorded_at = data["engine"], data["run_id"], data["recorded_at"]
+        self.consortium_on_meko = bool(data.get("consortium_on_meko"))   # week 3 is in the recording too
         self.entries, self.pos = data["entries"], 0
         self.calls: list[Call] = []
         self.last_search: dict = {}
