@@ -45,17 +45,20 @@ def test_invented_addresses_cannot_belong_to_anyone():
 
 
 # The Bundesnetzagentur's «Rufnummern für Medienproduktionen» (Drama Numbers): never given to anyone.
-DRAMA_LANDLINE = ("+493023125", "+496990009", "+494066969", "+492214710", "+498999998")    # each + 3 digits
-DRAMA_MOBILE = {"+4915228817386", "+4915228895456", "+4915254599371", "+491729925904", "+491729968532",
-                "+491729973185", "+491729973186", "+491729980752", "+491749091317", "+491749464308"}
-DRAMA_MOBILE_BLOCKS = ("+4917139200", "+49176040690")                                      # each + 2 digits
+# Written with spaces, as on the list, so that no checker reads them as card numbers.
+DRAMA_LANDLINE = ("+49 30 23125", "+49 69 90009", "+49 40 66969", "+49 221 4710", "+49 89 99998")   # each + 3 digits
+DRAMA_MOBILE = {"+49 152 28817386", "+49 152 28895456", "+49 152 54599371", "+49 172 9925904", "+49 172 9968532",
+                "+49 172 9973185", "+49 172 9973186", "+49 172 9980752", "+49 174 9091317", "+49 174 9464308"}
+DRAMA_MOBILE_BLOCKS = ("+49 171 39200", "+49 176 040690")                                          # each + 2 digits
 
 
 def _drama_number(phone: str) -> bool:
-    p = phone.replace(" ", "")
-    return (p in DRAMA_MOBILE
-            or any(p.startswith(b) and len(p) == len(b) + 3 and p[len(b):].isdigit() for b in DRAMA_LANDLINE)
-            or any(p.startswith(b) and len(p) == len(b) + 2 and p[len(b):].isdigit() for b in DRAMA_MOBILE_BLOCKS))
+    def squash(s: str) -> str:
+        return s.replace(" ", "")
+    p = squash(phone)
+    blocks = [(squash(b), 3) for b in DRAMA_LANDLINE] + [(squash(b), 2) for b in DRAMA_MOBILE_BLOCKS]
+    return p in {squash(m) for m in DRAMA_MOBILE} or any(
+        p.startswith(b) and len(p) == len(b) + n and p[len(b):].isdigit() for b, n in blocks)
 
 
 def test_the_story_phones_and_ibans_cannot_reach_anyone():
