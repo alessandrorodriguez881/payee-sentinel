@@ -54,7 +54,10 @@ mule account of the Nordwind case. Weller runs the same agents twice, on its own
 confirmed and a person approved (round 5's rule, the same weights). On its own it stops the attack at Tuesday's
 callback, after the request; in the consortium, Hallberg's approved pattern freezes the vendor on Monday afternoon, 21
 hours before the attacker asks for new bank details, and on Tuesday the mule account comes up with the trace of
-Hallberg's decision. Week 3 always runs on the offline simulator, so the recorded run of weeks 1-2 stays valid.
+Hallberg's decision. Week 3 runs on the same engine as weeks 1-2 when it is live or recorded: Weller's consortium
+team works in the same Meko as Hallberg's, in its own run, with its own patterns datapack and the shared
+`consortium` one (Weller on its own, the comparison, stays on the simulator). The run recorded on 9 Nov holds weeks
+1-2 only, so in today's replay week 3 still runs on the offline simulator.
 
 Three engines answer the agents, and the sidebar switches between them:
 - **Replay of a recorded run** (the default when a recording exists): the answers real Meko gave in one run recorded
@@ -66,12 +69,14 @@ Three engines answer the agents, and the sidebar switches between them:
   every Meko feature used here against the real service, and `python scripts/record_run.py --real` records a new run
   into `recordings/` (do it once, on empty datapacks).
 
-**Claude (optional).** With `ANTHROPIC_API_KEY` set, Claude Opus 5.5 reads each email for the Meko lane's inbox agent,
-quoting the words behind every red flag, and explains the auditor's decision in plain words. Quotes not found in the
-email, and sentences citing a memory or a number the trace does not hold, are dropped in code. Claude's flags carry no
+**A language model (optional).** With a free Groq key (`GROQ_API_KEY`, model `openai/gpt-oss-20b`) or an Anthropic
+key (`ANTHROPIC_API_KEY`, Claude Opus 5.5), the model reads each email for the Meko lane's inbox agent, quoting the
+words behind every red flag, and explains the auditor's decision in plain words. Quotes not found in the email, and
+sentences citing a memory or a number the trace does not hold, are dropped in code. The model's flags carry no
 weight, so the decisions stay those of the measured rules (`payee_sentinel/reader.py`). Without a key nothing changes.
+A run recorded with a key keeps the model's answers next to Meko's, so the public replay shows them with no key.
 `python scripts/token_table.py` measures what Claude reads to explain the same decisions with and without Meko; it
-needs the key.
+needs the Anthropic key.
 
 How the public demo is deployed, and what must never go into its secrets: `docs/DEPLOY.md`.
 

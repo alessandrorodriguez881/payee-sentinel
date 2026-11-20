@@ -62,7 +62,7 @@ flowchart LR
 | **The auditor** | Explains a decision from its trace, quoting the policy behind the rule from the knowledge base. Saves the case report as an artifact. Runs Meko's self-learning loop: finds the vendor-master agent's weak question in Meko's search log, adds the confirmed case file to the knowledge base and asks Meko to replay the question. | `story.py` (`Story.explain`, `Story.self_learning`) |
 | **The ledger** | The system of record, in a Postgres cluster inside `sentinel-audit` (Meko AMP): vendors, vendor_history, bank_changes and payments. Every record a decision writes carries that decision's trace id. Where the database cannot be reached, the same schema runs on SQLite. | `ledger.py` |
 | **The consortium** (week 3, round 5) | A `consortium` datapack shared by member companies. It holds the account, phone and device of every attack an analyst confirmed, each with the trace of the decision behind it. Approved patterns go into each member's collective memory, and confirmed case files into its knowledge base. When a listed value comes back, the agent that sees it adds `consortium.known_infrastructure` (+6). A member can take a case back with a revocation record; nothing is deleted. In the demo, both companies are simulated in one place. | `story.py` (`Story.share`, `Lane._check_known`), `evaluate.py` (`run_consortium`) |
-| **Claude** (optional) | With `ANTHROPIC_API_KEY` set, Claude Opus 5.5 reads each email for the Meko lane's inbox agent, quoting the words behind every red flag, and explains the auditor's decision in plain words. Quotes not found in the email, and sentences citing a memory or a number the trace does not hold, are dropped in code. Claude's flags carry no weight, so the decisions stay those of the measured rules. Token use goes to Meko (`track_token_usage`). Without a key nothing changes. | `reader.py` |
+| **A language model** (optional) | With `GROQ_API_KEY` (gpt-oss on Groq, free) or `ANTHROPIC_API_KEY` (Claude Opus 5.5), the model reads each email for the Meko lane's inbox agent, quoting the words behind every red flag, and explains the auditor's decision in plain words. Quotes not found in the email, and sentences citing a memory or a number the trace does not hold, are dropped in code. Claude's flags carry no weight, so the decisions stay those of the measured rules. Token use goes to Meko (`track_token_usage`). Without a key nothing changes. | `reader.py` |
 
 ## One decision, end to end
 
@@ -97,7 +97,9 @@ attacker asks.
 | Replay | `context/replay.py`: the answers real Meko gave in one recorded run, in order, refusing any call that was not recorded next | The public demo |
 | Real Meko, live | `context/meko.py`: MCP (JSON-RPC over HTTP) for the tools, REST for datapacks, learnings and promotion | With `MEKO_API_KEY`, on empty datapacks |
 
-Week 3 always runs on the simulator, so a recorded run of weeks 1-2 stays valid.
+Week 3's consortium team runs on the same store as weeks 1-2 when live or recorded (`Story.week3_on_meko`), in its own
+run with its own patterns datapack and the shared `consortium` one; a recording made so says it
+(`consortium_on_meko`), and an older recording keeps week 3 on the simulator.
 
 ## Code map
 
@@ -108,7 +110,7 @@ Week 3 always runs on the simulator, so a recorded run of weeks 1-2 stays valid.
 | `payee_sentinel/scenario.py` | Synthetic worlds for the measurements: vendors, attacks and legitimate look-alikes |
 | `payee_sentinel/evaluate.py` | The measured rounds (pre-registered in `docs/HYPOTHESES.md`, results in `docs/RESULTS.md`) |
 | `payee_sentinel/ledger.py` | The ledger: Postgres in Meko AMP, or SQLite |
-| `payee_sentinel/reader.py` | Claude: reads emails and explains decisions, checked in code |
+| `payee_sentinel/reader.py` | The model (gpt-oss on Groq, free, or Claude): reads emails and explains decisions, checked in code; records its answers for a replay |
 | `payee_sentinel/tokens.py` | The token table: what Claude reads to explain the same decision with and without Meko (needs a key) |
 | `payee_sentinel/context/` | The three engines behind one interface (`base.py`) |
 | `payee_sentinel/knowledge/` | The company's payment policy and fraud playbook, uploaded to Meko's knowledge base (invented) |

@@ -10,8 +10,9 @@ week 3).
    `main`, main file `app.py`. In the advanced settings choose Python 3.12, the version `requirements.txt` was tested
    on, and pick the app's address.
 3. **Secrets: none are needed.**
-   - Optional: `ANTHROPIC_API_KEY` turns Claude on. It then reads the emails and explains decisions for every visitor,
-     and each pass is billed to that key. `python scripts/token_table.py --run` measures what one explanation costs.
+   - Not needed for the model either: a run recorded with a model key keeps the model's answers, and the replay shows
+     them. Optional: `GROQ_API_KEY` (free) or `ANTHROPIC_API_KEY` turns a live model on for every visitor, within that
+     key's limits or billed to it. `python scripts/token_table.py --run` measures what one Claude explanation costs.
    - Never put `MEKO_API_KEY` or the `MEKO_PG_*` values there. With them, visitors would get the "Real Meko, live"
      engine and write into the live Meko account and its Postgres ledger.
 4. **Check it while logged out:** the first screen, Start, every step to the end (€0 against €85,250), then week 3.
