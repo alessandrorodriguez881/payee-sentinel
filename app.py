@@ -150,8 +150,8 @@ with story_tab:
         for col, (label, value, note) in zip(ends, (
                 ("Agents in silos (today)", "€85,250", "sent to the attackers in two weeks"),
                 ("Agents sharing memory in Meko", "€0", "the bank change is blocked at Tuesday's callback"),
-                ("Week 3, another company", "21 hours early", "the vendor is frozen before the attacker asks for new "
-                                                             "bank details, by what the first company confirmed"))):
+                ("Week 3, another company", "21 h early", "the vendor is frozen 21 hours before the attacker asks for "
+                                                         "new bank details, by what the first company confirmed"))):
             col.metric(label, value, border=True)
             col.caption(note)
         st.markdown("**How:** every agent writes what looks risky to shared memory in Meko and searches it before it "
