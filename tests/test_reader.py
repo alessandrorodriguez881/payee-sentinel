@@ -1,4 +1,5 @@
-"""Claude in the agents, tested without a key: a fake client stands in for `anthropic.Anthropic`."""
+"""A model in the agents, tested without a key: a fake client stands in for `anthropic.Anthropic`, and a mock
+transport for Groq."""
 import json
 from types import SimpleNamespace
 
@@ -7,7 +8,7 @@ import httpx
 import pytest
 
 from payee_sentinel.context.local import LocalMeko
-from payee_sentinel.reader import MODEL, Reader
+from payee_sentinel.reader import GROQ_MODEL, GROQ_URL, MODEL, GroqReader, Reader
 from payee_sentinel.story import CHAPTERS, VENDORS, Story
 
 
@@ -121,7 +122,7 @@ def test_in_the_demo_claude_reads_and_explains_and_the_decisions_do_not_change()
         [(d["what"], d["outcome"], d["risk"]) for d in meko_b.log]            # Claude never decides
     tuesday = dict(with_claude.done[1][1])
     inbox = [ln for st in tuesday["learning2"].steps if st.agent == "inbox" for ln in st.lines]
-    assert any(ln.startswith("Claude reads it: payment change") for ln in inbox)
+    assert any(ln.startswith("Claude Opus 5.5 reads it: payment change") for ln in inbox)
     assert not any("Claude" in ln for st in tuesday["siloed"].steps for ln in st.lines)   # the Meko lane only
     audit = next(out for ch, out in with_claude.done if ch.key == "audit")
     assert audit["learning2"].claude == ["The vendor-master agent blocked the bank change."]
@@ -179,4 +180,150 @@ def test_the_installed_sdk_sends_and_reads_what_reader_expects():
 
 def test_without_a_key_there_is_no_reader(monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
     assert Reader.from_env() is None
+
+
+def _groq(handler, waits=None):
+    """A Groq reader whose requests go to `handler`, and whose waits (on a 429) are only written down."""
+    return GroqReader(httpx.Client(transport=httpx.MockTransport(handler)), key="gsk_test",
+                      wait=waits.append if waits is not None else (lambda seconds: None))
+
+
+def _reply(payload, finish="stop", **message):
+    return httpx.Response(200, json={"model": GROQ_MODEL, "usage": {"prompt_tokens": 700, "completion_tokens": 90},
+                                     "choices": [{"finish_reason": finish, "message": {
+                                         "role": "assistant", "content": json.dumps(payload), **message}}]})
+
+
+def test_groq_asks_for_a_strict_schema_and_its_flags_pass_the_same_quote_check():
+    seen = []
+
+    def handler(request):
+        seen.append(request)
+        return _reply({"flags": [
+            dict(kind="payment_change", quote="please pay all open invoices to:", why="New bank details."),
+            dict(kind="impersonation", quote="We are your new finance partner", why="Invented.")]})
+
+    res = _groq(handler).read_email("Nordwind Logistik GmbH", "nordwind-logistik.example", _email())
+    body = json.loads(seen[0].content)
+    assert str(seen[0].url) == GROQ_URL and seen[0].headers["authorization"] == "Bearer gsk_test"
+    assert body["model"] == GROQ_MODEL and body["temperature"] == 0
+    assert body["response_format"]["type"] == "json_schema"
+    assert body["response_format"]["json_schema"]["strict"] is True
+    assert [m["role"] for m in body["messages"]] == ["system", "user"]
+    assert [f.kind for f in res.items] == ["payment_change"] and len(res.dropped) == 1    # the invented quote
+    assert res.usage == dict(model=GROQ_MODEL, input_tokens=700, output_tokens=90) and res.note == ""
+
+
+def test_groq_waits_on_its_free_rate_limit_and_tries_again():
+    calls, waits = [], []
+
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(429, headers={"retry-after": "2"}) if len(calls) < 3 else _reply({"flags": []})
+
+    res = _groq(handler, waits).read_email("Nordwind Logistik GmbH", "nordwind-logistik.example", _email())
+    assert len(calls) == 3 and waits == [2.0, 2.0] and res.items == [] and res.note == ""
+
+
+def _broken(request):
+    raise httpx.ConnectError("offline", request=request)
+
+
+@pytest.mark.parametrize("handler, note", [
+    (lambda request: httpx.Response(429), "Groq's free rate limit was reached"),
+    (lambda request: httpx.Response(500), "Groq returned an error (500)"),
+    (_broken, "Groq could not be reached"),
+    (lambda request: _reply({"flags": []}, finish="length"), "the model's answer was cut off"),
+    (lambda request: _reply({}, refusal="I can't help with that."), "the model declined to answer"),
+    (lambda request: httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": "oops"}}]}),
+     "the model's answer was not valid JSON"),
+])
+def test_groq_problems_leave_no_flags_and_say_why(handler, note):
+    res = _groq(handler).read_email("Nordwind Logistik GmbH", "nordwind-logistik.example", _email())
+    assert res.items == [] and res.note == note
+
+
+def test_groq_explains_and_the_trace_check_still_drops_what_the_trace_does_not_hold():
+    facts = ("Decision: block the bank change (outcome block) by the vendor_master agent.\nRisk score: 19.\n"
+             "- 5e7d2b59aa11 | Tue 17 Nov 16:05 | inbox | email.freemail_sender | +2 | Email from mail.test.")
+    sentences = [dict(text="The agent blocked the change at risk 19.", memory_ids=["5e7d2b59"]),
+                 dict(text="An earlier case agreed.", memory_ids=["deadbeef"]),
+                 dict(text="It saved 42 euros.", memory_ids=[])]
+    res = _groq(lambda request: _reply({"sentences": sentences})).explain_facts(facts, {"5e7d2b59aa11"}, "V001")
+    assert [s["text"] for s in res.items] == ["The agent blocked the change at risk 19."] and len(res.dropped) == 2
+
+
+def test_in_the_demo_groq_reads_with_its_own_name_and_never_decides():
+    flags = [dict(kind="payment_change", quote="please pay all open invoices to:", why="New bank details.")]
+
+    def handler(request):
+        schema = json.loads(request.content)["response_format"]["json_schema"]["schema"]
+        return _reply({"flags": flags} if "flags" in schema["properties"] else
+                      {"sentences": [dict(text="The vendor-master agent blocked the bank change.", memory_ids=[])]})
+
+    with_groq = _with_claude(Story(LocalMeko, reader=_groq(handler)))
+    without = _with_claude(Story(LocalMeko))
+    assert [(d["what"], d["outcome"], d["risk"]) for d in with_groq.lanes["learning2"].log] == \
+        [(d["what"], d["outcome"], d["risk"]) for d in without.lanes["learning2"].log]
+    tuesday = dict(with_groq.done[1][1])
+    inbox = [ln for st in tuesday["learning2"].steps if st.agent == "inbox" for ln in st.lines]
+    assert any(ln.startswith("gpt-oss on Groq reads it: payment change") for ln in inbox)
+
+
+def test_the_free_groq_key_is_used_first_and_the_choice_can_be_forced(monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "gsk_test")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.delenv("PAYEE_SENTINEL_LLM", raising=False)
+    assert isinstance(Reader.from_env(), GroqReader)
+    monkeypatch.setenv("PAYEE_SENTINEL_LLM", "claude")
+    assert type(Reader.from_env()) is Reader
+    monkeypatch.delenv("ANTHROPIC_API_KEY")
+    assert Reader.from_env() is None                    # Claude asked for, and no Claude key
+    monkeypatch.setenv("PAYEE_SENTINEL_LLM", "groq")
+    assert isinstance(Reader.from_env(), GroqReader)
+
+
+def _groq_jobs(request):
+    """Groq's answer to either job: one flag the email holds, or one plain sentence."""
+    schema = json.loads(request.content)["response_format"]["json_schema"]["schema"]
+    if "flags" in schema["properties"]:
+        return _reply({"flags": [dict(kind="payment_change", quote="please pay all open invoices to:",
+                                      why="New bank details.")]})
+    return _reply({"sentences": [dict(text="The vendor-master agent blocked the bank change.", memory_ids=[])]})
+
+
+def _shown(story):
+    lines = []
+    for ch, out in story.done:
+        if "learning2" in out:
+            lines += [ln for st in out["learning2"].steps for ln in st.lines] + out["learning2"].claude
+    return [ln.replace(" (recorded answers)", "") for ln in lines]
+
+
+def test_a_run_recorded_with_the_model_replays_its_answers_with_no_key(tmp_path):
+    from payee_sentinel.context.replay import Recorder, Replayer
+    from payee_sentinel.reader import AnswerRecorder, ReplayReader
+    reader = _groq(_groq_jobs)
+    answers = AnswerRecorder(reader)
+    recorder = Recorder(LocalMeko(), "simulator")
+    recorded = _with_claude(Story(lambda: recorder, reader=reader))
+    path = recorder.save(tmp_path / "run.json", recorded.run_id, llm=answers.dump())
+    replay = Replayer(path)
+    again = _with_claude(Story(lambda: replay, run_id=replay.run_id, reader=ReplayReader.from_recording(path)))
+    assert replay.pos == len(replay.entries)                  # every Meko call, the token reports included
+    assert again.reader.pos == len(answers.answers) >= 2      # each email read and the explanation, in order
+    assert again.reader.label == "gpt-oss on Groq (recorded answers)"
+    assert _shown(again) == _shown(recorded) and any("gpt-oss on Groq reads it" in ln for ln in _shown(again))
+
+
+def test_recorded_answers_answer_only_the_recorded_request(tmp_path):
+    from payee_sentinel.reader import ReplayReader
+    reader = ReplayReader(dict(label="gpt-oss on Groq", model=GROQ_MODEL,
+                               answers=[dict(name="inbox: read email", digest="0" * 16, data={"flags": []}, usage={},
+                                             note="")]))
+    res = reader.read_email("Nordwind Logistik GmbH", "nordwind-logistik.example", _email())
+    assert res.items == [] and res.note == "this request is not the recorded one"
+    assert ReplayReader.from_recording(None) is None
+

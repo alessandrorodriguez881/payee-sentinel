@@ -1,6 +1,7 @@
-"""Claude inside the agents: it reads and it explains; the measured rules still decide.
+"""A language model inside the agents: it reads and it explains; the measured rules still decide.
 
-Two jobs, both optional. They need `ANTHROPIC_API_KEY`; without it the demo and the measurements run exactly as before.
+Two models can do it, both optional: gpt-oss on Groq, with a free key (`GROQ_API_KEY`), or Claude (`ANTHROPIC_API_KEY`).
+Without a key the demo and the measurements run exactly as before. Two jobs:
 
 - `Reader.read_email`: the inbox agent asks Claude for the red flags in an email to accounts payable. Each flag must
   quote the email word for word, and a quote that is not in the email is dropped here, in code, so nothing Claude
@@ -10,22 +11,30 @@ Two jobs, both optional. They need `ANTHROPIC_API_KEY`; without it the demo and 
   and the signals with their memory ids. A sentence that cites a memory id or a number the trace does not hold is
   dropped.
 
-Every request uses Claude Opus 5.5 with a JSON schema for the answer and server-side fallbacks on a refusal. Token use
-goes to Meko (`track_token_usage`) against the agent's conversation, when a store is given. The prompts are shorter
-than the minimum a prompt cache needs, so no caching is set.
+Every request asks for a JSON schema: Claude Opus 5.5 with server-side fallbacks on a refusal, or gpt-oss on Groq
+with strict structured outputs. Token use goes to Meko (`track_token_usage`) against the agent's conversation, when a
+store is given. The prompts are shorter than the minimum a prompt cache needs, so no caching is set.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import hashlib
 import json
 import os
 import re
+import time
+
+from pathlib import Path
 
 import anthropic
+import httpx
 
 MODEL = os.environ.get("PAYEE_SENTINEL_MODEL", "claude-opus-5-5")   # $4 in / $20 out per million tokens (Nov 2026)
 FALLBACK_BETA = "server-side-fallback-2026-07-01"                   # on a refusal, the API retries on another model
 MAX_TOKENS = 4000                 # per answer, thinking included
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"        # OpenAI-compatible; plain HTTP, no new package
+GROQ_MODEL = os.environ.get("PAYEE_SENTINEL_GROQ_MODEL", "openai/gpt-oss-20b")   # free tier; strict JSON schemas
+GROQ_RETRIES = 3                  # the free tier allows a few requests a minute: wait and try again on a 429
 KINDS = ("pressure", "payment_change", "contact_change", "impersonation", "inconsistency", "other")
 MIN_QUOTE = 12                    # characters: a shorter quote matches too easily to prove anything
 NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
@@ -87,7 +96,7 @@ class Flag:
 @dataclass
 class Result:
     items: list                                      # verified flags, or the sentences of an explanation that passed
-    dropped: list = field(default_factory=list)      # (what Claude said, why it was dropped)
+    dropped: list = field(default_factory=list)      # (what the model said, why it was dropped)
     usage: dict = field(default_factory=dict)        # model, input and output tokens
     note: str = ""                                   # a refusal or an error, in plain words
 
@@ -110,16 +119,27 @@ class Reader:
     """Claude for one team of agents. `client` is an `anthropic.Anthropic`, or any object with the same
     `beta.messages.create` (the tests pass a fake one, so they need no key)."""
 
+    label = "Claude Opus 5.5"
+
     def __init__(self, client, model: str = MODEL, store=None, datapack: str | None = None):
         self.client, self.model, self.store, self.datapack = client, model, store, datapack
         self.calls: list[dict] = []                  # one line per request, for the demo's trace view
 
     @classmethod
     def from_env(cls, store=None, datapack: str | None = None) -> "Reader | None":
-        """A reader when `ANTHROPIC_API_KEY` is set, else None (the agents then run without Claude, as measured)."""
-        if not os.environ.get("ANTHROPIC_API_KEY"):
-            return None
-        return cls(anthropic.Anthropic(), store=store, datapack=datapack)
+        """The reader the keys allow, else None (the agents then run without a model, as measured). With both keys,
+        Groq (free) is used unless `PAYEE_SENTINEL_LLM=claude`."""
+        choice = os.environ.get("PAYEE_SENTINEL_LLM", "").strip().lower()
+        if os.environ.get("GROQ_API_KEY") and choice in ("", "groq"):
+            return GroqReader(store=store, datapack=datapack)
+        if os.environ.get("ANTHROPIC_API_KEY") and choice in ("", "claude"):
+            return cls(anthropic.Anthropic(), store=store, datapack=datapack)
+        return None
+
+    def _track(self, usage: dict, conversation_id: str | None, name: str) -> None:
+        if self.store is not None and self.datapack and conversation_id:
+            self.store.track_tokens(self.datapack, conversation_id, name, usage["input_tokens"],
+                                    usage["output_tokens"], usage["model"])
 
     def _ask(self, system: str, user: str, schema: dict, conversation_id: str | None,
              name: str) -> tuple[dict | None, dict, str]:
@@ -136,9 +156,7 @@ class Reader:
             return None, {}, f"Claude returned an error ({exc.status_code})"
         usage = dict(model=getattr(response, "model", self.model), input_tokens=response.usage.input_tokens,
                      output_tokens=response.usage.output_tokens)
-        if self.store is not None and self.datapack and conversation_id:
-            self.store.track_tokens(self.datapack, conversation_id, name, usage["input_tokens"],
-                                    usage["output_tokens"], usage["model"])
+        self._track(usage, conversation_id, name)
         if response.stop_reason == "refusal":
             return None, usage, "Claude declined to answer"
         if response.stop_reason == "max_tokens":
@@ -217,3 +235,102 @@ class Reader:
         self.calls.append(dict(job="explain", about=about, kept=len(result.items), dropped=len(result.dropped),
                                note=note, **usage))
         return result
+
+
+class GroqReader(Reader):
+    """The same jobs with gpt-oss on Groq: a free key, an OpenAI-compatible endpoint called with plain HTTP, and a strict
+    JSON schema for every answer. `client` is an `httpx.Client` (the tests pass one with a mock transport)."""
+
+    label = "gpt-oss on Groq"
+
+    def __init__(self, client: httpx.Client | None = None, model: str = GROQ_MODEL, store=None,
+                 datapack: str | None = None, key: str | None = None, wait=time.sleep):
+        super().__init__(client or httpx.Client(timeout=120), model, store, datapack)
+        self.key, self.wait = key or os.environ.get("GROQ_API_KEY", ""), wait
+
+    def _ask(self, system: str, user: str, schema: dict, conversation_id: str | None,
+             name: str) -> tuple[dict | None, dict, str]:
+        body = dict(model=self.model, temperature=0, max_completion_tokens=MAX_TOKENS, reasoning_effort="low",
+                    messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+                    response_format={"type": "json_schema",
+                                     "json_schema": {"name": "answer", "strict": True, "schema": schema}})
+        for attempt in range(GROQ_RETRIES + 1):
+            try:
+                r = self.client.post(GROQ_URL, json=body, headers={"Authorization": f"Bearer {self.key}"})
+            except httpx.HTTPError:
+                return None, {}, "Groq could not be reached"
+            if r.status_code != 429:
+                break
+            if attempt == GROQ_RETRIES:
+                return None, {}, "Groq's free rate limit was reached"
+            self.wait(min(30.0, float(r.headers.get("retry-after") or 5)))
+        if r.status_code >= 400:
+            return None, {}, f"Groq returned an error ({r.status_code})"
+        data = r.json()
+        u = data.get("usage") or {}
+        usage = dict(model=data.get("model", self.model), input_tokens=int(u.get("prompt_tokens", 0)),
+                     output_tokens=int(u.get("completion_tokens", 0)))
+        self._track(usage, conversation_id, name)
+        choice = (data.get("choices") or [{}])[0]
+        message = choice.get("message") or {}
+        if message.get("refusal"):
+            return None, usage, "the model declined to answer"
+        if choice.get("finish_reason") == "length":
+            return None, usage, "the model's answer was cut off"
+        try:
+            return json.loads(message.get("content") or ""), usage, ""
+        except json.JSONDecodeError:
+            return None, usage, "the model's answer was not valid JSON"
+
+
+def _digest(system: str, user: str) -> str:
+    return hashlib.sha256((system + "\x00" + user).encode("utf-8")).hexdigest()[:16]
+
+
+class AnswerRecorder:
+    """Keeps every answer a reader gets, next to the request it answered, so a recorded run can be replayed with no
+    key (`scripts/record_run.py` saves them in the recording, under `llm`)."""
+
+    def __init__(self, reader: Reader):
+        self.reader, self.answers = reader, []
+        ask = reader._ask
+
+        def recorded(system, user, schema, conversation_id, name):
+            data, usage, note = ask(system, user, schema, conversation_id, name)
+            self.answers.append(dict(name=name, digest=_digest(system, user), data=data, usage=usage, note=note))
+            return data, usage, note
+        reader._ask = recorded
+
+    def dump(self) -> dict:
+        return dict(label=self.reader.label, model=self.reader.model, answers=self.answers)
+
+
+class ReplayReader(Reader):
+    """The answers of a recorded run, in order: the public demo shows what the model said, with no key and no cost.
+    A request that is not the recorded one gets no answer, and the story shows why."""
+
+    replays = True                                   # `Story` lets it tell Meko about tokens, as the recorded run did
+
+    def __init__(self, recorded: dict, store=None, datapack: str | None = None):
+        super().__init__(None, recorded.get("model", ""), store, datapack)
+        self.label = f"{recorded.get('label', 'The model')} (recorded answers)"
+        self.answers, self.pos = list(recorded.get("answers", [])), 0
+
+    @classmethod
+    def from_recording(cls, path) -> "ReplayReader | None":
+        """The recorded reader of a recording, or None when the run was recorded with no model."""
+        data = json.loads(Path(path).read_text(encoding="utf-8")).get("llm") if path else None
+        return cls(data) if data and data.get("answers") else None
+
+    def _ask(self, system: str, user: str, schema: dict, conversation_id: str | None,
+             name: str) -> tuple[dict | None, dict, str]:
+        if self.pos >= len(self.answers):
+            return None, {}, "this answer is not in the recording"
+        a = self.answers[self.pos]
+        if (a["name"], a["digest"]) != (name, _digest(system, user)):
+            return None, {}, "this request is not the recorded one"
+        self.pos += 1
+        usage = a.get("usage") or {}
+        if usage:
+            self._track(usage, conversation_id, name)
+        return a.get("data"), usage, a.get("note", "")

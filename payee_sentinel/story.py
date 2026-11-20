@@ -338,12 +338,13 @@ class Lane:
         v = self.vendors[e.vendor_id]
         conv = self.mem.conversation("inbox") if self.reader.store is not None else None
         res = self.reader.read_email(v.name, v.domain, e.data, conv)
-        lines = [f"Claude reads it: {f.kind.replace('_', ' ')}, \"{f.quote}\" ({f.why})" for f in res.items]
+        who = self.reader.label
+        lines = [f"{who} reads it: {f.kind.replace('_', ' ')}, \"{f.quote}\" ({f.why})" for f in res.items]
         if res.dropped:
-            lines.append(f"Claude: {_n(len(res.dropped), 'flag')} dropped, the quote is not in the email")
+            lines.append(f"{who}: {_n(len(res.dropped), 'flag')} dropped, the quote is not in the email")
         if res.note:
-            lines.append(f"Claude: {res.note}")
-        return lines or ["Claude reads it: no red flag it can quote"]
+            lines.append(f"{who}: {res.note}")
+        return lines or [f"{who} reads it: no red flag it can quote"]
 
     def _check_known(self, e: Event, agent) -> None:
         """Week 3, round 5's rule: a value in the event that the consortium lists as confirmed attacker infrastructure
@@ -626,7 +627,9 @@ class Story:
         self.act: dict[str, Lane] = {}                 # week 3: Weller on its own and in the consortium
         meko = self.lanes["learning2"]
         self.reader = meko.reader = reader              # Claude, when there is a key (`reader.Reader.from_env`)
-        if reader is not None and not isinstance(meko.store, Replayer):   # a replay holds only recorded calls
+        if reader is not None and (getattr(reader, "replays", False) or not isinstance(meko.store, Replayer)):
+            # a replay holds only recorded calls: a live model there stays off the store; recorded answers do not,
+            # because the recorded run told Meko about their tokens
             reader.store, reader.datapack = meko.store, meko.mem.signals_dp
         for doc in sorted(KNOWLEDGE.glob("*.md")):     # the company's policy and playbook, in Meko's knowledge base
             meko.store.knowledge_upload(meko.mem.patterns_dp, doc.name, doc.read_bytes())
@@ -674,7 +677,7 @@ class Story:
         if res.dropped:
             lines.append(f"({_n(len(res.dropped), 'sentence')} dropped: it cited something the trace does not hold)")
         if res.note:
-            lines.append(f"Claude: {res.note}")
+            lines.append(f"{lane.reader.label}: {res.note}")
         return lines
 
     def _start_act(self) -> None:

@@ -14,7 +14,7 @@ from payee_sentinel.context import load_env
 from payee_sentinel.context.local import LocalMeko
 from payee_sentinel.context.replay import Replayer, ReplayMismatch, latest_recording
 from payee_sentinel.ledger import PgLedger, open_ledger
-from payee_sentinel.reader import Reader
+from payee_sentinel.reader import Reader, ReplayReader
 from payee_sentinel.story import ACT_LANES, AGENT_NAMES, BUYER, BUYER2, CHAPTERS, LANES, RUNS, VENDORS, Story
 
 st.set_page_config(page_title="Payee Sentinel", page_icon=":material/shield_lock:", layout="wide")
@@ -39,7 +39,8 @@ def new_story(engine: str) -> Story:
         return Story(MekoClient, make_ledger=open_ledger, reader=Reader.from_env())
     if engine == REPLAY:
         replay = Replayer(RECORDING)
-        return Story(lambda: replay, run_id=replay.run_id, make_ledger=open_ledger, reader=Reader.from_env())
+        reader = ReplayReader.from_recording(RECORDING) or Reader.from_env()   # the model's recorded answers, if any
+        return Story(lambda: replay, run_id=replay.run_id, make_ledger=open_ledger, reader=reader)
     return Story(LocalMeko, make_ledger=open_ledger, reader=Reader.from_env())
 
 
@@ -104,9 +105,9 @@ with st.sidebar:
                 ":material/computer: Offline simulator of Meko") + " · all data is invented")
     st.caption((":material/database: Ledger: Postgres in Meko (AMP)" if isinstance(story.ledger, PgLedger) else
                 ":material/database: Ledger: a local SQLite copy"))
-    st.caption(":material/smart_toy: Claude Opus 5.5 reads the emails and explains decisions; it never decides"
-               if story.reader else ":material/smart_toy: Claude is off: no ANTHROPIC_API_KEY, so the agents run "
-               "exactly as measured")
+    st.caption(f":material/smart_toy: {story.reader.label} reads the emails and explains decisions; it never decides"
+               if story.reader else ":material/smart_toy: No language model: no GROQ_API_KEY or ANTHROPIC_API_KEY, so "
+               "the agents run exactly as measured")
 
 if engine != ss.engine or restart:
     ss.engine = engine
@@ -231,11 +232,12 @@ with story_tab:
                                    "same way.")
                 if outcomes["learning2"].claude:
                     with st.container(border=True):
-                        st.markdown("**Claude explains it in plain words**")
+                        st.markdown(f"**{story.reader.label} explains it in plain words**")
                         for line in outcomes["learning2"].claude:
                             st.markdown(f"- {line}")
-                        st.caption("Claude Opus 5.5 reads the decision's trace in Meko. A sentence that cites a "
-                                   "memory or a number the trace does not hold is dropped before it is shown.")
+                        st.caption(f"{story.reader.label} reads the decision's trace in Meko. A sentence that "
+                                   "cites a memory or a number the trace does not hold is dropped before it is "
+                                   "shown.")
         elif ch.kind == "network":
             net = story.network()
             left, right = st.columns(2, gap="large")
