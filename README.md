@@ -21,9 +21,9 @@ and every decision is saved in Meko as a trace with its reasoning.
 ## Key numbers
 | What | Result | Source |
 |---|---|---|
-| The demo, weeks 1-2 | Agents in silos send **€85,250** to the attackers; the same agents sharing memory in Meko send **€0** | the app; `tests/test_app.py`, also on the run recorded on real Meko (9 Nov 2026) |
+| The demo, weeks 1-2 | Agents in silos send **€85,250** to the attackers; the same agents sharing memory in Meko send **€0**. Neither lane checks the payee's name with the bank (Verification of Payee): the fair comparison is round 4 | the app; `tests/test_app.py`, also on the run recorded on real Meko (9 Nov 2026) |
 | The demo, week 3 | Another company of the consortium freezes the vendor **21 hours before** the attacker asks for new bank details | the app; `tests/test_app.py` |
-| A fair comparison, 320 attacks (round 4) | With best practices in every lane, silos stop 305 and shared memory 319; money lost falls from €710,177 to **€12,535**, at about 4 frictions per six-week period | `docs/RESULTS.md` |
+| A fair comparison, 320 attacks (round 4) | With best practices in every lane, silos stop 305; a shared table and Meko both stop 319, Meko about 56 hours earlier; money lost falls from €710,177 to **€12,535**, at about 4 frictions per six-week period | `docs/RESULTS.md` |
 | A consortium, 160 attacks (round 5) | **41-61** stopped before the attacker asks for new bank details, against 27 for a company on its own | `docs/RESULTS.md` |
 | The problem | **$2.77 billion** in business email compromise losses reported to the FBI's IC3 in 2024 | FBI IC3, *2024 Internet Crime Report* (link below) |
 

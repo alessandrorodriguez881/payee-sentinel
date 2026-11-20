@@ -150,8 +150,9 @@ with story_tab:
         for col, (label, value, note) in zip(ends, (
                 ("Agents in silos (today)", "€85,250", "sent to the attackers in two weeks"),
                 ("Agents sharing memory in Meko", "€0", "the bank change is blocked at Tuesday's callback"),
-                ("Week 3, another company", "21 h early", "the vendor is frozen 21 hours before the attacker asks for "
-                                                         "new bank details, by what the first company confirmed"))):
+                ("Week 3, another company (simulated)", "21 h early",
+                 "the vendor is frozen 21 hours before the attacker asks for new bank details, by what the first "
+                 "company confirmed"))):
             col.metric(label, value, border=True)
             col.caption(note)
         st.markdown("**How:** every agent writes what looks risky to shared memory in Meko and searches it before it "
@@ -161,7 +162,9 @@ with story_tab:
         recorded = "" if not replaying else (
             f"You are watching a replay of a run recorded on real Meko on {meko_lane.store.recorded_at[:10]}: the same "
             f"calls, the answers Meko gave. Week 3 runs on the offline simulator. ")
-        st.caption(f"{recorded}{len(CHAPTERS)} steps; Next in the sidebar moves on. All data is invented.")
+        st.caption(f"{recorded}{len(CHAPTERS)} steps; Next in the sidebar moves on. All data is invented. In this "
+                   f"story neither team checks the payee's name with the bank (Verification of Payee); with it in "
+                   f"every team, see «Measured results», round 4.")
         with st.expander("Who is who", icon=":material/groups:"):
             cast = st.columns(3)
             cast[0].markdown("**Portal agent** — logins, password resets and contact changes on the supplier portal\n\n"
@@ -347,7 +350,11 @@ with meko_tab:
                                    weight=s.weight, detail=s.detail, memory=s.memory_id[:8])
                               for s in sorted(d["signals"], key=lambda s: s.at)],
                              hide_index=True, alt="The memories behind the decision")
-    st.markdown("**The ledger: Postgres inside the context**")
+    if story.ledger.kind.startswith("Postgres"):
+        st.markdown("**The ledger: Postgres inside the context**")
+    else:                                           # the public demo has no account: say what runs here
+        st.markdown("**The ledger** · with the Meko account it is Postgres inside the context; without it, as in "
+                    "this public demo, a local copy with the same tables")
     st.caption(f"{story.ledger.kind}. The vendor master with its history, the bank-change requests and the payments of "
                f"the Meko lane; every record a decision made carries the id of that decision's trace in Meko.")
     pick_table = st.segmented_control("Ledger table", ["Payments", "Bank-change requests", "Vendor master",
