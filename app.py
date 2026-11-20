@@ -132,10 +132,15 @@ story_tab, meko_tab, results_tab = st.tabs(["Story", "What Meko recorded", "Meas
 # ---------- the story ----------
 with story_tab:
     if not story.done:
-        st.subheader("A supplier's account is taken over. Who notices?")
-        st.markdown(f"**{BUYER}** pays its suppliers every Thursday. This week someone takes over the account of one "
-                    f"of them, Nordwind Logistik. Each step of the attack reaches a different system, and each looks "
-                    f"routine there:")
+        st.subheader("A thief takes over your supplier's email. Who notices?")
+        st.markdown("**The scam in one sentence:** someone gets into a supplier's email and asks you to pay a new "
+                    "bank account. You know the supplier, so nobody doubts it, and each clue lands in a different "
+                    "system, so nobody sees the whole picture.")
+        st.caption("It happens for real: Facebook and Google paid about $120 million to a man posing as Quanta, one "
+                   "of their suppliers, with fake invoices; he was sentenced to five years in 2019 "
+                   "([The Register](https://www.theregister.com/2019/12/20/facebook_google_hacker_five_years/)).")
+        st.markdown(f"In the demo, **{BUYER}** pays its suppliers every Thursday, and the thief takes over one of "
+                    f"them, **Nordwind Logistik**:")
         days = st.columns(3, border=True)
         days[0].markdown("**Monday · the supplier portal**\n\nSix failed logins from a new device in Nigeria, a "
                          "password reset, then a new contact email and phone. Only the portal sees it.")
@@ -144,9 +149,8 @@ with story_tab:
                          "the attacker's.")
         days[2].markdown("**Thursday · the payment run**\n\n€48,300 leaves for the attackers' account. Nobody notices "
                          "until Nordwind asks where its money is.")
-        st.markdown("Two teams of agents watch the same events with the same rules. **On the left, each agent keeps "
-                    "its own memory**, as separate tools do today. **On the right, they share it through Meko**: what "
-                    "one agent writes, the others find before they act. Where the story ends:")
+        st.markdown("Two teams of agents watch the same events with the same rules: **one keeps each system's memory "
+                    "apart**, as tools do today; **the other shares it through Meko**. Where the story ends:")
         ends = st.columns(3)
         for col, (label, value, note) in zip(ends, (
                 ("Agents in silos (today)", "€85,250", "sent to the attackers in two weeks"),
@@ -156,9 +160,6 @@ with story_tab:
                  "bank details, by what the first company confirmed"))):   # short labels: st.metric cuts long ones
             col.metric(label, value, border=True)
             col.caption(note)
-        st.markdown("**How:** every agent writes what looks risky to shared memory in Meko and searches it before it "
-                    "acts. Rules decide (a bank change is blocked at risk 6); a person confirms cases and approves "
-                    "what becomes collective memory; every decision is saved in Meko as a trace, with its reasoning.")
         st.button("Start on Monday morning", type="primary", icon=":material/play_arrow:", on_click=start)
         recorded = "" if not replaying else (
             f"You are watching a replay of a run recorded on real Meko on {meko_lane.store.recorded_at[:10]}: the same "
@@ -168,7 +169,10 @@ with story_tab:
         st.caption(f"{recorded}{len(CHAPTERS)} steps; Next in the sidebar moves on. All data is invented. In this "
                    f"story neither team checks the payee's name with the bank (Verification of Payee); with it in "
                    f"every team, see «Measured results», round 4.")
-        with st.expander("Who is who", icon=":material/groups:"):
+        with st.expander("How it works, and who is who", icon=":material/groups:"):
+            st.markdown("Every agent writes what looks risky to shared memory in Meko and searches it before it acts. "
+                        "Rules decide (a bank change is blocked at risk 6); a person confirms cases and approves what "
+                        "becomes collective memory; every decision is saved in Meko as a trace, with its reasoning.")
             cast = st.columns(3)
             cast[0].markdown("**Portal agent** — logins, password resets and contact changes on the supplier portal\n\n"
                              "**Inbox agent** — emails to accounts payable")

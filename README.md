@@ -1,8 +1,13 @@
 # Payee Sentinel
 
-Accounts-payable agents that share what they see through [Meko](https://mekodata.ai), so that a supplier-account
-takeover is stopped before the money leaves. Built for ContextCon: Remember Everything (theme 03, "Remember the
-Attacker").
+**The scam in one sentence:** a thief gets into a supplier's email and asks you to pay a new bank account. You know the
+supplier, so nobody doubts it, and each clue lands in a different system, so nobody sees the whole picture. It
+happens for real: Facebook and Google paid about $120 million to a man posing as Quanta, one of their suppliers
+([The Register, 2019](https://www.theregister.com/2019/12/20/facebook_google_hacker_five_years/)).
+
+Payee Sentinel: accounts-payable agents that share what they see through [Meko](https://mekodata.ai), so that a
+supplier-account takeover is stopped before the money leaves. Built for ContextCon: Remember Everything (theme 03,
+"Remember the Attacker").
 
 **Live demo:** <https://payee-sentinel.streamlit.app>, no sign-in and no key. **Or run it locally:**
 `pip install -r requirements.txt`, then `streamlit run app.py`. Both open on a replay of a run recorded on real Meko.
